@@ -3,13 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
 )
 
 func AddLilBits(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	chain := r.Context().Value(chainKey).(*Blockchain)
 
 	var lb LilBits
 	decoder := json.NewDecoder(r.Body)
@@ -18,33 +22,57 @@ func AddLilBits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chain.addBlock(lb)
+	chain, err := clstr.CompeteForWork(lb)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	log.Printf("%#v\n", lb)
-
-	if i, err := w.Write(chain.ToJSON()); err != nil {
-		log.Println(i, err)
+	if _, err := w.Write(chain.ToJSON()); err != nil {
+		log.Fatal(err)
 	}
 }
 
-func WithChain(next http.Handler, chain *Blockchain) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), chainKey, chain)
-		r = r.WithContext(ctx)
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-type ctxkey int
-
-const chainKey ctxkey = iota
+var clstr Cluster
 
 func main() {
 	chain := InitBlockchain()
 
-	http.Handle("/add/lilbits", WithChain(http.HandlerFunc(AddLilBits), &chain))
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(context.Background())
 
-	log.Println("Hollah at ya server")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	clstr = NewCluster(5, chain)
+	wg.Add(1)
+	go clstr.Run(ctx, &wg)
+
+	http.Handle("/add/lilbits", http.HandlerFunc(AddLilBits))
+
+	server := http.Server{
+		Addr: ":8080",
+	}
+
+	sigRec := make(chan os.Signal)
+	signal.Notify(sigRec, os.Interrupt)
+	go func() {
+		<-sigRec
+		go cancel()
+		go func() {
+			if err := server.Shutdown(ctx); err != nil {
+				log.Println(err)
+			}
+		}()
+	}()
+
+	wg.Add(1)
+	go func() {
+		ascii, err := ioutil.ReadFile("./assets/ascii.txt")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(string(ascii))
+		log.Println(server.ListenAndServe())
+		wg.Done()
+	}()
+
+	wg.Wait()
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// 1
 type Block struct {
 	ID        int     `json:"ID"`
 	Timestamp int64   `json:"timestamp"`

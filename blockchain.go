@@ -2,14 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"os"
 )
 
 const blockchainFile = "storage.json"
 
-// 1
 type Blockchain []*Block
 
 func InitBlockchain() Blockchain {
@@ -27,24 +25,16 @@ func InitBlockchain() Blockchain {
 		log.Fatal(err)
 	}
 
-	bc.Verify()
+	if bc.IsBroken() {
+		log.Fatal("Initialization failed due to broken chain")
+	}
 
 	return bc
 }
 
-func (bc *Blockchain) addBlock(payload LilBits) {
-	block := NewBlock((*bc)[len(*bc)-1], payload)
-	*bc = append(*bc, block)
-
-	bc.Propagate()
-}
-
-func (bc Blockchain) Propagate() {
-	bc.Verify()
-
-	if err := ioutil.WriteFile(blockchainFile, bc.ToJSON(), 0644); err != nil {
-		log.Fatal(err)
-	}
+func (bc Blockchain) addBlock(payload LilBits) Blockchain {
+	block := NewBlock(bc[len(bc)-1], payload)
+	return append(bc, block)
 }
 
 func (bc *Blockchain) ToJSON() []byte {
@@ -56,7 +46,7 @@ func (bc *Blockchain) ToJSON() []byte {
 	return j
 }
 
-func (bc Blockchain) Verify() {
+func (bc Blockchain) IsBroken() bool {
 	for i, block := range bc[1:] {
 		prev := bc[i]
 
@@ -64,7 +54,9 @@ func (bc Blockchain) Verify() {
 		if prevhash != block.PrevHash ||
 			prevhash != prev.Hash ||
 			block.Hash != block.makeHash() {
-			log.Fatal("Block is not valid!")
+			return true
 		}
 	}
+
+	return false
 }
