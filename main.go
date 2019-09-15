@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -35,6 +36,10 @@ func AddLilBits(w http.ResponseWriter, r *http.Request) {
 var clstr Cluster
 
 func main() {
+	var numNodes int
+	flag.IntVar(&numNodes, "numnodes", 10, "Number of nodes to spin up for the blockchain network")
+	flag.Parse()
+
 	chain := InitBlockchain()
 
 	var wg sync.WaitGroup
