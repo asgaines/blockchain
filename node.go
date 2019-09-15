@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync"
 	"time"
 )
 
 type Node interface {
 	GetID() int
-	Run(context.Context, *sync.WaitGroup)
+	Run(context.Context)
 	GetCC() chan Blockchain
 	AddLilBits(LilBits) error
 	GetChain() Blockchain
@@ -34,9 +33,7 @@ type node struct {
 	cc    chan Blockchain
 }
 
-func (n node) Run(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (n node) Run(ctx context.Context) {
 	for {
 		select {
 		case chain := <-n.cc:

@@ -9,7 +9,7 @@ import (
 )
 
 type Cluster interface {
-	Run(context.Context, *sync.WaitGroup)
+	Run(context.Context)
 	CompeteForWork(LilBits) (Blockchain, error)
 }
 
@@ -37,17 +37,20 @@ type cluster struct {
 	wg    *sync.WaitGroup
 }
 
-func (c cluster) Run(ctx context.Context, wg *sync.WaitGroup) {
+func (c cluster) Run(ctx context.Context) {
 	for _, node := range c.nodes {
 		c.wg.Add(1)
-		go node.Run(ctx, c.wg)
+		go func(node Node) {
+			defer c.wg.Done()
+			node.Run(ctx)
+		}(node)
 	}
 	c.wg.Wait()
-	wg.Done()
 }
 
 func (c cluster) CompeteForWork(lb LilBits) (Blockchain, error) {
 	node := c.randomNode()
+
 	if err := node.AddLilBits(lb); err != nil {
 		return nil, err
 	}

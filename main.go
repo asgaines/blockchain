@@ -40,9 +40,12 @@ func main() {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
-	clstr = NewCluster(5, chain)
+	clstr = NewCluster(numNodes, chain)
 	wg.Add(1)
-	go clstr.Run(ctx, &wg)
+	go func() {
+		defer wg.Done()
+		clstr.Run(ctx)
+	}()
 
 	http.Handle("/add/lilbits", http.HandlerFunc(AddLilBits))
 
@@ -52,6 +55,7 @@ func main() {
 
 	sigRec := make(chan os.Signal)
 	signal.Notify(sigRec, os.Interrupt)
+
 	go func() {
 		<-sigRec
 		go cancel()
