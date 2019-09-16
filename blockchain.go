@@ -13,7 +13,7 @@ type Blockchain []*Block
 func InitBlockchain() Blockchain {
 	f, err := os.Open(blockchainFile)
 	if err != nil {
-		genesis := NewBlock(&Block{}, LilBits{})
+		genesis := NewBlock(&Block{}, LilBits{}, 0)
 		return Blockchain{genesis}
 	}
 	defer f.Close()
@@ -32,8 +32,7 @@ func InitBlockchain() Blockchain {
 	return bc
 }
 
-func (bc Blockchain) addBlock(payload LilBits) Blockchain {
-	block := NewBlock(bc[len(bc)-1], payload)
+func (bc Blockchain) AddBlock(block *Block) Blockchain {
 	return append(bc, block)
 }
 

@@ -23,12 +23,12 @@ func AddLilBits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chain, err := clstr.CompeteForWork(lb)
+	node, err := clstr.AddTransaction(lb)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err := w.Write(chain.ToJSON()); err != nil {
+	if _, err := w.Write(node.GetChain().ToJSON()); err != nil {
 		log.Fatal(err)
 	}
 }

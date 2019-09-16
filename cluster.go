@@ -2,22 +2,25 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
 )
 
+// Cluster represents a set of Nodes
+// It's useful for coordinating behavior across blockchain network
 type Cluster interface {
 	Run(context.Context)
-	CompeteForWork(LilBits) (Blockchain, error)
+	AddTransaction(LilBits) (Node, error)
 }
 
+// NewCluster instantiates a Cluster; a set of Nodes
 func NewCluster(numNodes int, chainSeed Blockchain) Cluster {
 	var nodes []Node
 
 	for id := 0; id < numNodes; id++ {
-		node := NewNode(id, chainSeed)
+		submissions := make(chan LilBits)
+		node := NewNode(id, chainSeed, submissions)
 		nodes = append(nodes, node)
 	}
 
@@ -45,18 +48,25 @@ func (c cluster) Run(ctx context.Context) {
 			node.Run(ctx)
 		}(node)
 	}
+
 	c.wg.Wait()
 }
 
-func (c cluster) CompeteForWork(lb LilBits) (Blockchain, error) {
-	node := c.randomNode()
+func (c cluster) AddTransaction(lb LilBits) (Node, error) {
+	podium := make(chan Node)
 
-	if err := node.AddLilBits(lb); err != nil {
-		return nil, err
+	for _, node := range c.nodes {
+		node.SubmitTransaction(lb, podium)
 	}
 
-	fmt.Printf("NEW BLOCK SOLVED BY NODE %d\n", node.GetID())
-	return node.GetChain(), nil
+	node := <-podium
+
+	// Closing the podium opens the blockchain up for another mining node causing a panic
+	// when writing its solution if it hasn't yet realized it lost
+	// The panic will need to be solved by a way of reconciling near-simultaneous successful minings
+	close(podium)
+
+	return node, nil
 }
 
 func (c cluster) randomNode() Node {
