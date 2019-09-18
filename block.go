@@ -13,8 +13,8 @@ type Block struct {
 	Timestamp int64   `json:"timestamp"`
 	Hash      string  `json:"hash"`
 	PrevHash  string  `json:"prevhash"`
-	Payload   LilBits `json:"payload"`
 	Nonce     int     `json:"nonce"`
+	Payload   LilBits `json:"payload"`
 }
 
 // NewBlock instantiates a Block from a payload
@@ -23,8 +23,8 @@ func NewBlock(prev *Block, payload LilBits, nonce int) *Block {
 		ID:        prev.ID + 1,
 		Timestamp: time.Now().UTC().UnixNano(),
 		PrevHash:  prev.Hash,
-		Payload:   payload,
 		Nonce:     nonce,
+		Payload:   payload,
 	}
 
 	b.Hash = b.makeHash()

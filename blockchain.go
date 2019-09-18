@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"time"
 )
 
 const blockchainFile = "storage.json"
@@ -25,7 +26,7 @@ func InitBlockchain() Blockchain {
 		log.Fatal(err)
 	}
 
-	if bc.IsBroken() {
+	if !bc.IsSolid() {
 		log.Fatal("Initialization failed due to broken chain")
 	}
 
@@ -45,7 +46,7 @@ func (bc *Blockchain) ToJSON() []byte {
 	return j
 }
 
-func (bc Blockchain) IsBroken() bool {
+func (bc Blockchain) IsSolid() bool {
 	for i, block := range bc[1:] {
 		prev := bc[i]
 
@@ -53,9 +54,21 @@ func (bc Blockchain) IsBroken() bool {
 		if prevhash != block.PrevHash ||
 			prevhash != prev.Hash ||
 			block.Hash != block.makeHash() {
-			return true
+			return false
 		}
 	}
 
-	return false
+	return true
+}
+
+func (bc Blockchain) LastLink() *Block {
+	return bc[len(bc)-1]
+}
+
+func (bc Blockchain) TimeSinceLastLink() time.Duration {
+	unixTsNano := bc.LastLink().Timestamp
+	unixTsSec := unixTsNano / 1000000000
+
+	lastLinkTime := time.Unix(unixTsSec, 0)
+	return time.Since(lastLinkTime)
 }
