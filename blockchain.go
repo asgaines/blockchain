@@ -67,7 +67,7 @@ func (bc Blockchain) LastLink() *Block {
 
 func (bc Blockchain) TimeSinceLastLink() time.Duration {
 	unixTsNano := bc.LastLink().Timestamp
-	unixTsSec := unixTsNano / 1000000000
+	unixTsSec := unixTsNano / 1_000_000_000
 
 	lastLinkTime := time.Unix(unixTsSec, 0)
 	return time.Since(lastLinkTime)
