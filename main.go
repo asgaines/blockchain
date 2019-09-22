@@ -13,17 +13,17 @@ import (
 	"sync"
 )
 
-func AddLilBits(w http.ResponseWriter, r *http.Request) {
+func AddTransaction(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var lb LilBits
+	var tx Transaction
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&lb); err != nil {
+	if err := decoder.Decode(&tx); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	node, err := clstr.AddTransaction(lb)
+	node, err := clstr.AddTransaction(tx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func main() {
 		clstr.Run(ctx)
 	}()
 
-	http.Handle("/add/lilbits", http.HandlerFunc(AddLilBits))
+	http.Handle("/add/lilbits", http.HandlerFunc(AddTransaction))
 
 	server := http.Server{
 		Addr: ":8080",

@@ -11,7 +11,7 @@ import (
 // It's useful for coordinating behavior across blockchain network
 type Cluster interface {
 	Run(context.Context)
-	AddTransaction(LilBits) (Node, error)
+	AddTransaction(Transaction) (Node, error)
 }
 
 // NewCluster instantiates a Cluster; a set of Nodes
@@ -19,7 +19,7 @@ func NewCluster(numNodes int, chainSeed Blockchain, targetMin float64) Cluster {
 	var nodes []Node
 
 	for id := 0; id < numNodes; id++ {
-		submissions := make(chan LilBits)
+		submissions := make(chan Transaction)
 		node := NewNode(id, chainSeed, submissions, targetMin)
 		nodes = append(nodes, node)
 	}
@@ -52,11 +52,11 @@ func (c cluster) Run(ctx context.Context) {
 	c.wg.Wait()
 }
 
-func (c cluster) AddTransaction(lb LilBits) (Node, error) {
+func (c cluster) AddTransaction(tx Transaction) (Node, error) {
 	podium := make(chan Node)
 
 	for _, node := range c.nodes {
-		node.SubmitTransaction(lb, podium)
+		node.SubmitTransaction(tx, podium)
 	}
 
 	node := <-podium

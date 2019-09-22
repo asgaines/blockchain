@@ -16,8 +16,8 @@ import (
 type Node interface {
 	GetID() int
 	Run(context.Context)
-	SubmitTransaction(lb LilBits, podium chan<- Node)
-	Mine(lb LilBits)
+	SubmitTransaction(lb Transaction, podium chan<- Node)
+	Mine(tx Transaction)
 	GetCC() chan Blockchain
 	GetChain() *Blockchain
 	SetChain(Blockchain) error
@@ -26,7 +26,7 @@ type Node interface {
 }
 
 // NewNode instantiates a Node; a blockchain client
-func NewNode(id int, chain Blockchain, transactions chan LilBits, targetMin float64) Node {
+func NewNode(id int, chain Blockchain, transactions chan Transaction, targetMin float64) Node {
 	return &node{
 		id:           id,
 		chain:        chain,
@@ -42,7 +42,7 @@ type node struct {
 	id           int
 	peers        []Node
 	chain        Blockchain
-	transactions chan LilBits
+	transactions chan Transaction
 	podium       chan<- Node
 	cc           chan Blockchain
 	latency      time.Duration
@@ -69,12 +69,12 @@ func (n *node) Run(ctx context.Context) {
 	}
 }
 
-func (n *node) SubmitTransaction(lb LilBits, podium chan<- Node) {
+func (n *node) SubmitTransaction(tx Transaction, podium chan<- Node) {
 	n.podium = podium
-	n.transactions <- lb
+	n.transactions <- tx
 }
 
-func (n *node) Mine(lb LilBits) {
+func (n *node) Mine(tx Transaction) {
 	found := make(chan *Block)
 
 	defer func() {
@@ -82,7 +82,7 @@ func (n *node) Mine(lb LilBits) {
 	}()
 	n.mining = true
 
-	go n.mine(lb, found)
+	go n.mine(tx, found)
 
 	select {
 	case block := <-found:
@@ -102,7 +102,7 @@ func (n *node) Mine(lb LilBits) {
 	}
 }
 
-func (n *node) mine(lb LilBits, found chan<- *Block) {
+func (n *node) mine(tx Transaction, found chan<- *Block) {
 	difficulty := n.SenseDifficulty()
 
 	done := make(chan struct{})
@@ -126,9 +126,10 @@ func (n *node) mine(lb LilBits, found chan<- *Block) {
 	orig := nonce
 
 	for {
-		block := NewBlock(n.chain[len(n.chain)-1], lb, nonce)
+		block := NewBlock(n.chain[len(n.chain)-1], Transactions{tx}, nonce)
 
-		numZeroes := 3 + (difficulty * (64 - 3))
+		atLeast := float64(3)
+		numZeroes := atLeast + (difficulty * (64 - atLeast))
 
 		match := true
 		for i := 0; i < int(numZeroes); i++ {

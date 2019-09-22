@@ -15,11 +15,11 @@ type Block struct {
 	Hash      string  `json:"hash"`
 	PrevHash  string  `json:"prevhash"`
 	Nonce     int     `json:"nonce"`
-	Payload   LilBits `json:"payload"`
+	Payload   Transactions `json:"payload"`
 }
 
 // NewBlock instantiates a Block from a payload
-func NewBlock(prev *Block, payload LilBits, nonce int) *Block {
+func NewBlock(prev *Block, payload Transactions, nonce int) *Block {
 	b := Block{
 		ID:        prev.ID + 1,
 		Timestamp: time.Now().UTC().UnixNano(),
@@ -43,13 +43,25 @@ func (b Block) makeHash() string {
 	return hex.EncodeToString(hashed)
 }
 
-type LilBits struct {
+type Transaction struct {
 	For        string `json:"for"`
 	Schmeckles int    `json:"schmeckles"`
 	From       string `json:"from"`
 	To         string `json:"to"`
 }
 
-func (lb LilBits) String() string {
+func (lb Transaction) String() string {
 	return fmt.Sprintf("%d schmeckles from %s to %s for \"%s\"", lb.Schmeckles, lb.From, lb.To, lb.For)
+}
+
+type Transactions []Transaction
+
+func (txs Transactions) String() string {
+	concat := ""
+
+	for _, tx := range txs {
+		concat += fmt.Sprintf("%s\n", tx.String())
+	}
+
+	return concat
 }

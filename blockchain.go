@@ -14,7 +14,7 @@ type Blockchain []*Block
 func InitBlockchain() Blockchain {
 	f, err := os.Open(blockchainFile)
 	if err != nil {
-		genesis := NewBlock(&Block{}, LilBits{}, 0)
+		genesis := NewBlock(&Block{}, []Transaction{}, 0)
 		return Blockchain{genesis}
 	}
 	defer f.Close()
