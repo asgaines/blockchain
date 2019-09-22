@@ -11,12 +11,16 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+
+	"github.com/asgaines/blockchain/blockchain"
+	"github.com/asgaines/blockchain/cluster"
+	"github.com/asgaines/blockchain/transactions"
 )
 
 func AddTransaction(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var tx Transaction
+	var tx transactions.Transaction
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tx); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -33,7 +37,7 @@ func AddTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var clstr Cluster
+var clstr cluster.Cluster
 
 func main() {
 	var numNodes int
@@ -42,12 +46,12 @@ func main() {
 	flag.Float64Var(&targetMin, "targetminutes", 1, "The target for the lapse between block additions. Used to control the difficulty of the mining.")
 	flag.Parse()
 
-	chain := InitBlockchain()
+	chain := blockchain.InitBlockchain()
 
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
-	clstr = NewCluster(numNodes, chain, targetMin)
+	clstr = cluster.NewCluster(numNodes, chain, targetMin)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

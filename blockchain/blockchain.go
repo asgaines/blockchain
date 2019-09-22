@@ -1,20 +1,22 @@
-package main
+package blockchain
 
 import (
 	"encoding/json"
 	"log"
 	"os"
 	"time"
+
+	"github.com/asgaines/blockchain/transactions"
 )
 
-const blockchainFile = "storage.json"
+const BlockchainFile = "storage.json"
 
 type Blockchain []*Block
 
 func InitBlockchain() Blockchain {
-	f, err := os.Open(blockchainFile)
+	f, err := os.Open(BlockchainFile)
 	if err != nil {
-		genesis := NewBlock(&Block{}, []Transaction{}, 0)
+		genesis := NewBlock(&Block{}, []transactions.Transaction{}, 0)
 		return Blockchain{genesis}
 	}
 	defer f.Close()

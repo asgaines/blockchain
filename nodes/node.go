@@ -1,4 +1,4 @@
-package main
+package nodes
 
 import (
 	"context"
@@ -8,6 +8,9 @@ import (
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/asgaines/blockchain/blockchain"
+	"github.com/asgaines/blockchain/transactions"
 )
 
 // Node represents a blockchain client
@@ -16,22 +19,22 @@ import (
 type Node interface {
 	GetID() int
 	Run(context.Context)
-	SubmitTransaction(lb Transaction, podium chan<- Node)
-	Mine(tx Transaction)
-	GetCC() chan Blockchain
-	GetChain() *Blockchain
-	SetChain(Blockchain) error
+	SubmitTransaction(tx transactions.Transaction, podium chan<- Node)
+	Mine(tx transactions.Transaction)
+	GetCC() chan blockchain.Blockchain
+	GetChain() *blockchain.Blockchain
+	SetChain(blockchain.Blockchain) error
 	SetPeers([]Node)
 	SenseDifficulty() float64
 }
 
 // NewNode instantiates a Node; a blockchain client
-func NewNode(id int, chain Blockchain, transactions chan Transaction, targetMin float64) Node {
+func NewNode(id int, chain blockchain.Blockchain, transactions chan transactions.Transaction, targetMin float64) Node {
 	return &node{
 		id:           id,
 		chain:        chain,
 		transactions: transactions,
-		cc:           make(chan Blockchain),
+		cc:           make(chan blockchain.Blockchain),
 		latency:      100 * time.Millisecond,
 		ilost:        make(chan struct{}),
 		targetMin:    targetMin,
@@ -41,10 +44,10 @@ func NewNode(id int, chain Blockchain, transactions chan Transaction, targetMin 
 type node struct {
 	id           int
 	peers        []Node
-	chain        Blockchain
-	transactions chan Transaction
+	chain        blockchain.Blockchain
+	transactions chan transactions.Transaction
 	podium       chan<- Node
-	cc           chan Blockchain
+	cc           chan blockchain.Blockchain
 	latency      time.Duration
 	mining       bool
 	ilost        chan struct{}
@@ -69,13 +72,13 @@ func (n *node) Run(ctx context.Context) {
 	}
 }
 
-func (n *node) SubmitTransaction(tx Transaction, podium chan<- Node) {
+func (n *node) SubmitTransaction(tx transactions.Transaction, podium chan<- Node) {
 	n.podium = podium
 	n.transactions <- tx
 }
 
-func (n *node) Mine(tx Transaction) {
-	found := make(chan *Block)
+func (n *node) Mine(tx transactions.Transaction) {
+	found := make(chan *blockchain.Block)
 
 	defer func() {
 		n.mining = false
@@ -102,7 +105,7 @@ func (n *node) Mine(tx Transaction) {
 	}
 }
 
-func (n *node) mine(tx Transaction, found chan<- *Block) {
+func (n *node) mine(tx transactions.Transaction, found chan<- *blockchain.Block) {
 	difficulty := n.SenseDifficulty()
 
 	done := make(chan struct{})
@@ -126,7 +129,7 @@ func (n *node) mine(tx Transaction, found chan<- *Block) {
 	orig := nonce
 
 	for {
-		block := NewBlock(n.chain[len(n.chain)-1], Transactions{tx}, nonce)
+		block := blockchain.NewBlock(n.chain[len(n.chain)-1], transactions.Transactions{tx}, nonce)
 
 		atLeast := float64(3)
 		numZeroes := atLeast + (difficulty * (64 - atLeast))
@@ -149,7 +152,7 @@ func (n *node) mine(tx Transaction, found chan<- *Block) {
 	}
 }
 
-func (n node) GetCC() chan Blockchain {
+func (n node) GetCC() chan blockchain.Blockchain {
 	return n.cc
 }
 
@@ -157,11 +160,11 @@ func (n node) GetID() int {
 	return n.id
 }
 
-func (n *node) GetChain() *Blockchain {
+func (n *node) GetChain() *blockchain.Blockchain {
 	return &n.chain
 }
 
-func (n *node) SetChain(chain Blockchain) error {
+func (n *node) SetChain(chain blockchain.Blockchain) error {
 	if chain.IsSolid() && len(chain) > len(n.chain) {
 		fmt.Printf("%d: Overriding with new chain\n", n.id)
 		n.chain = chain
@@ -208,7 +211,7 @@ func (n node) propagate() {
 }
 
 func (n node) store() error {
-	fname := fmt.Sprintf("%s/%d_%s", "storage", n.GetID(), blockchainFile)
+	fname := fmt.Sprintf("%s/%d_%s", "storage", n.GetID(), blockchain.BlockchainFile)
 
 	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
