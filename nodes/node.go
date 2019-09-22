@@ -29,36 +29,38 @@ type Node interface {
 }
 
 // NewNode instantiates a Node; a blockchain client
-func NewNode(id int, chain blockchain.Blockchain, transactions chan transactions.Transaction, targetMin float64) Node {
+func NewNode(id int, chain blockchain.Blockchain, rcvTx chan transactions.Transaction, targetMin float64) Node {
 	return &node{
-		id:           id,
-		chain:        chain,
-		transactions: transactions,
-		cc:           make(chan blockchain.Blockchain),
-		latency:      100 * time.Millisecond,
-		ilost:        make(chan struct{}),
-		targetMin:    targetMin,
+		id:        id,
+		chain:     chain,
+		rcvTx:     rcvTx,
+		cc:        make(chan blockchain.Blockchain),
+		latency:   100 * time.Millisecond,
+		ilost:     make(chan struct{}),
+		targetMin: targetMin,
+		queue:     make(transactions.Transactions, 0),
 	}
 }
 
 type node struct {
-	id           int
-	peers        []Node
-	chain        blockchain.Blockchain
-	transactions chan transactions.Transaction
-	podium       chan<- Node
-	cc           chan blockchain.Blockchain
-	latency      time.Duration
-	mining       bool
-	ilost        chan struct{}
-	targetMin    float64
+	id        int
+	peers     []Node
+	chain     blockchain.Blockchain
+	rcvTx     chan transactions.Transaction
+	podium    chan<- Node
+	cc        chan blockchain.Blockchain
+	latency   time.Duration
+	mining    bool
+	ilost     chan struct{}
+	targetMin float64
+	queue     transactions.Transactions
 }
 
 func (n *node) Run(ctx context.Context) {
 	for {
 		select {
-		case lilbits := <-n.transactions:
-			go n.Mine(lilbits)
+		case tx := <-n.rcvTx:
+			go n.Mine(tx)
 		case chain := <-n.cc:
 			fmt.Printf("%d: Received chain posting from peer %v\n", n.id, chain)
 			if err := n.SetChain(chain); err != nil {
@@ -74,7 +76,7 @@ func (n *node) Run(ctx context.Context) {
 
 func (n *node) SubmitTransaction(tx transactions.Transaction, podium chan<- Node) {
 	n.podium = podium
-	n.transactions <- tx
+	n.rcvTx <- tx
 }
 
 func (n *node) Mine(tx transactions.Transaction) {

@@ -11,22 +11,22 @@ import (
 
 // Block represents a link in the blockchain
 type Block struct {
-	ID        int                       `json:"ID"`
-	Timestamp int64                     `json:"timestamp"`
-	Hash      string                    `json:"hash"`
-	PrevHash  string                    `json:"prevhash"`
-	Nonce     int                       `json:"nonce"`
-	Payload   transactions.Transactions `json:"payload"`
+	ID           int                       `json:"ID"`
+	Timestamp    int64                     `json:"timestamp"`
+	Hash         string                    `json:"hash"`
+	PrevHash     string                    `json:"prevhash"`
+	Nonce        int                       `json:"nonce"`
+	Transactions transactions.Transactions `json:"payload"`
 }
 
 // NewBlock instantiates a Block from a payload
-func NewBlock(prev *Block, payload transactions.Transactions, nonce int) *Block {
+func NewBlock(prev *Block, txs transactions.Transactions, nonce int) *Block {
 	b := Block{
-		ID:        prev.ID + 1,
-		Timestamp: time.Now().UTC().UnixNano(),
-		PrevHash:  prev.Hash,
-		Nonce:     nonce,
-		Payload:   payload,
+		ID:           prev.ID + 1,
+		Timestamp:    time.Now().UTC().UnixNano(),
+		PrevHash:     prev.Hash,
+		Nonce:        nonce,
+		Transactions: txs,
 	}
 
 	b.Hash = b.makeHash()
@@ -35,7 +35,7 @@ func NewBlock(prev *Block, payload transactions.Transactions, nonce int) *Block 
 }
 
 func (b Block) makeHash() string {
-	concat := string(b.ID) + strconv.FormatInt(b.Timestamp, 10) + b.PrevHash + b.Payload.String() + strconv.Itoa(b.Nonce)
+	concat := string(b.ID) + strconv.FormatInt(b.Timestamp, 10) + b.PrevHash + b.Transactions.String() + strconv.Itoa(b.Nonce)
 
 	h := sha256.New()
 	h.Write([]byte(concat))
