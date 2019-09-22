@@ -37,7 +37,9 @@ var clstr Cluster
 
 func main() {
 	var numNodes int
-	flag.IntVar(&numNodes, "numnodes", 10, "Number of nodes to spin up for the blockchain network")
+	var targetMin float64
+	flag.IntVar(&numNodes, "numnodes", 10, "Number of nodes to spin up for the blockchain network.")
+	flag.Float64Var(&targetMin, "targetminutes", 1, "The target for the lapse between block additions. Used to control the difficulty of the mining.")
 	flag.Parse()
 
 	chain := InitBlockchain()
@@ -45,7 +47,7 @@ func main() {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
-	clstr = NewCluster(numNodes, chain)
+	clstr = NewCluster(numNodes, chain, targetMin)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

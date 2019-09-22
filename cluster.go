@@ -15,12 +15,12 @@ type Cluster interface {
 }
 
 // NewCluster instantiates a Cluster; a set of Nodes
-func NewCluster(numNodes int, chainSeed Blockchain) Cluster {
+func NewCluster(numNodes int, chainSeed Blockchain, targetMin float64) Cluster {
 	var nodes []Node
 
 	for id := 0; id < numNodes; id++ {
 		submissions := make(chan LilBits)
-		node := NewNode(id, chainSeed, submissions)
+		node := NewNode(id, chainSeed, submissions, targetMin)
 		nodes = append(nodes, node)
 	}
 

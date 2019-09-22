@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -43,11 +44,12 @@ func (b Block) makeHash() string {
 }
 
 type LilBits struct {
-	Dish       string `json:"dish"`
+	For        string `json:"for"`
 	Schmeckles int    `json:"schmeckles"`
-	Client     string `json:"client"`
+	From       string `json:"from"`
+	To         string `json:"to"`
 }
 
 func (lb LilBits) String() string {
-	return lb.Dish + strconv.Itoa(lb.Schmeckles) + lb.Client
+	return fmt.Sprintf("%d schmeckles from %s to %s for \"%s\"", lb.Schmeckles, lb.From, lb.To, lb.For)
 }

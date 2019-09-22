@@ -11,7 +11,7 @@ import (
 )
 
 // Node represents a blockchain client
-// It preserves a copy of the blockchain, competes for new block additions,
+// It preserves a copy of the blockchain, competes for new block additions by mining,
 // and verifies work of peer nodes
 type Node interface {
 	GetID() int
@@ -19,7 +19,6 @@ type Node interface {
 	SubmitTransaction(lb LilBits, podium chan<- Node)
 	Mine(lb LilBits)
 	GetCC() chan Blockchain
-	// AddLilBits(LilBits) error
 	GetChain() *Blockchain
 	SetChain(Blockchain) error
 	SetPeers([]Node)
@@ -27,7 +26,7 @@ type Node interface {
 }
 
 // NewNode instantiates a Node; a blockchain client
-func NewNode(id int, chain Blockchain, transactions chan LilBits) Node {
+func NewNode(id int, chain Blockchain, transactions chan LilBits, targetMin float64) Node {
 	return &node{
 		id:           id,
 		chain:        chain,
@@ -35,6 +34,7 @@ func NewNode(id int, chain Blockchain, transactions chan LilBits) Node {
 		cc:           make(chan Blockchain),
 		latency:      100 * time.Millisecond,
 		ilost:        make(chan struct{}),
+		targetMin:    targetMin,
 	}
 }
 
@@ -48,13 +48,13 @@ type node struct {
 	latency      time.Duration
 	mining       bool
 	ilost        chan struct{}
+	targetMin    float64
 }
 
 func (n *node) Run(ctx context.Context) {
 	for {
 		select {
 		case lilbits := <-n.transactions:
-			fmt.Printf("%d received new submission request: %v\n", n.id, lilbits)
 			go n.Mine(lilbits)
 		case chain := <-n.cc:
 			fmt.Printf("%d: Received chain posting from peer %v\n", n.id, chain)
@@ -116,7 +116,6 @@ func (n *node) mine(lb LilBits, found chan<- *Block) {
 			select {
 			case <-ticker.C:
 				difficulty = n.SenseDifficulty()
-				fmt.Println("difficulty:", difficulty)
 			case <-done:
 				return
 			}
@@ -140,7 +139,7 @@ func (n *node) mine(lb LilBits, found chan<- *Block) {
 		}
 
 		if match {
-			fmt.Printf("Node %d mined new block of hash %s. %d nonce updates.\n", n.id, block.Hash, nonce-orig)
+			fmt.Printf("Node %d mined new block of hash %s. %d nonce updates. difficulty: %v\n", n.id, block.Hash, nonce-orig, difficulty)
 			found <- block
 			return
 		}
@@ -192,8 +191,7 @@ func (n *node) SetPeers(nodes []Node) {
 func (n *node) SenseDifficulty() float64 {
 	lapse := n.GetChain().TimeSinceLastLink()
 
-	target := float64(0.2)
-	scaled := -(1/target)*float64(float64(lapse)/float64(time.Minute)) + 1
+	scaled := -(1/n.targetMin)*float64(float64(lapse)/float64(time.Minute)) + 1
 
 	return math.Max(scaled, 0)
 }
