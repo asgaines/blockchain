@@ -17,12 +17,12 @@ import (
 // It preserves a copy of the blockchain, competes for new block additions by mining,
 // and verifies work of peer nodes
 type Node interface {
+	Mine()
 	GetID() int
 	Run(context.Context)
-	SubmitTransaction(tx transactions.Transaction, podium chan<- Node)
-	Mine(tx transactions.Transaction)
+	SubmitTransaction(tx transactions.Transaction)
 	GetCC() chan blockchain.Blockchain
-	GetChain() *blockchain.Blockchain
+	GetChain() blockchain.Blockchain
 	SetChain(blockchain.Blockchain) error
 	SetPeers([]Node)
 	SenseDifficulty() float64
@@ -36,7 +36,6 @@ func NewNode(id int, chain blockchain.Blockchain, rcvTx chan transactions.Transa
 		rcvTx:     rcvTx,
 		cc:        make(chan blockchain.Blockchain),
 		latency:   100 * time.Millisecond,
-		ilost:     make(chan struct{}),
 		targetMin: targetMin,
 		queue:     make(transactions.Transactions, 0),
 	}
@@ -47,20 +46,19 @@ type node struct {
 	peers     []Node
 	chain     blockchain.Blockchain
 	rcvTx     chan transactions.Transaction
-	podium    chan<- Node
 	cc        chan blockchain.Blockchain
 	latency   time.Duration
-	mining    bool
-	ilost     chan struct{}
 	targetMin float64
 	queue     transactions.Transactions
 }
 
 func (n *node) Run(ctx context.Context) {
+	go n.Mine()
+
 	for {
 		select {
 		case tx := <-n.rcvTx:
-			go n.Mine(tx)
+			n.queue = append(n.queue, tx)
 		case chain := <-n.cc:
 			fmt.Printf("%d: Received chain posting from peer %v\n", n.id, chain)
 			if err := n.SetChain(chain); err != nil {
@@ -74,47 +72,34 @@ func (n *node) Run(ctx context.Context) {
 	}
 }
 
-func (n *node) SubmitTransaction(tx transactions.Transaction, podium chan<- Node) {
-	n.podium = podium
+func (n *node) SubmitTransaction(tx transactions.Transaction) {
 	n.rcvTx <- tx
 }
 
-func (n *node) Mine(tx transactions.Transaction) {
+func (n *node) Mine() {
 	found := make(chan *blockchain.Block)
 
-	defer func() {
-		n.mining = false
-	}()
-	n.mining = true
+	go n.mine(found)
 
-	go n.mine(tx, found)
-
-	select {
-	case block := <-found:
-		n.mining = false
-		n.podium <- n
-
-		chain := n.chain.AddBlock(block)
-		if err := n.SetChain(chain); err != nil {
-			log.Fatal(err)
+	for {
+		select {
+		case minedBlock := <-found:
+			chain := n.chain.AddBlock(minedBlock)
+			if err := n.SetChain(chain); err != nil {
+				log.Fatal(err)
+			}
 		}
-
-		return
-	case <-n.ilost:
-		// A more robust blockchain is always mining, not only when a transaction
-		// has been logged
-		return
 	}
 }
 
-func (n *node) mine(tx transactions.Transaction, found chan<- *blockchain.Block) {
+func (n *node) mine(found chan<- *blockchain.Block) {
 	difficulty := n.SenseDifficulty()
 
 	done := make(chan struct{})
 	defer close(done)
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
 
 		for {
@@ -131,7 +116,7 @@ func (n *node) mine(tx transactions.Transaction, found chan<- *blockchain.Block)
 	orig := nonce
 
 	for {
-		block := blockchain.NewBlock(n.chain[len(n.chain)-1], transactions.Transactions{tx}, nonce)
+		block := blockchain.NewBlock(n.chain[len(n.chain)-1], n.queue, nonce)
 
 		atLeast := float64(3)
 		numZeroes := atLeast + (difficulty * (64 - atLeast))
@@ -147,7 +132,6 @@ func (n *node) mine(tx transactions.Transaction, found chan<- *blockchain.Block)
 		if match {
 			fmt.Printf("Node %d mined new block of hash %s. %d nonce updates. difficulty: %v\n", n.id, block.Hash, nonce-orig, difficulty)
 			found <- block
-			return
 		}
 
 		nonce++
@@ -162,18 +146,19 @@ func (n node) GetID() int {
 	return n.id
 }
 
-func (n *node) GetChain() *blockchain.Blockchain {
-	return &n.chain
+func (n *node) GetChain() blockchain.Blockchain {
+	return n.chain
 }
 
 func (n *node) SetChain(chain blockchain.Blockchain) error {
 	if chain.IsSolid() && len(chain) > len(n.chain) {
 		fmt.Printf("%d: Overriding with new chain\n", n.id)
+
 		n.chain = chain
 
-		if n.mining {
-			n.ilost <- struct{}{}
-		}
+		// TODO: ensure ALL txs in queue are in new chain
+		// If not, keep orphans to queue
+		n.queue = make(transactions.Transactions, 0)
 
 		if err := n.store(); err != nil {
 			return err

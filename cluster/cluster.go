@@ -15,7 +15,7 @@ import (
 // It's useful for coordinating behavior across blockchain network
 type Cluster interface {
 	Run(ctx context.Context)
-	AddTransaction(txs transactions.Transaction) (nodes.Node, error)
+	AddTransaction(tx transactions.Transaction)
 }
 
 // NewCluster instantiates a Cluster; a set of Nodes
@@ -56,21 +56,10 @@ func (c cluster) Run(ctx context.Context) {
 	c.wg.Wait()
 }
 
-func (c cluster) AddTransaction(tx transactions.Transaction) (nodes.Node, error) {
-	podium := make(chan nodes.Node)
-
+func (c cluster) AddTransaction(tx transactions.Transaction) {
 	for _, node := range c.network {
-		node.SubmitTransaction(tx, podium)
+		node.SubmitTransaction(tx)
 	}
-
-	node := <-podium
-
-	// Closing the podium opens the blockchain up for another mining node causing a panic
-	// when writing its solution if it hasn't yet realized it lost
-	// The panic will need to be solved by a way of reconciling near-simultaneous successful minings
-	close(podium)
-
-	return node, nil
 }
 
 func (c cluster) randomNode() nodes.Node {

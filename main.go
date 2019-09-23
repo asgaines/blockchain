@@ -27,12 +27,9 @@ func AddTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	node, err := clstr.AddTransaction(tx)
-	if err != nil {
-		log.Fatal(err)
-	}
+	clstr.AddTransaction(tx)
 
-	if _, err := w.Write(node.GetChain().ToJSON()); err != nil {
+	if _, err := w.Write([]byte("{\"accepted\": true}")); err != nil {
 		log.Fatal(err)
 	}
 }

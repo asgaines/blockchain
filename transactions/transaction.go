@@ -9,8 +9,8 @@ type Transaction struct {
 	To         string `json:"to"`
 }
 
-func (lb Transaction) String() string {
-	return fmt.Sprintf("%d schmeckles from %s to %s for \"%s\"", lb.Schmeckles, lb.From, lb.To, lb.For)
+func (tx Transaction) String() string {
+	return fmt.Sprintf("%d schmeckles from %s to %s for \"%s\"", tx.Schmeckles, tx.From, tx.To, tx.For)
 }
 
 type Transactions []Transaction

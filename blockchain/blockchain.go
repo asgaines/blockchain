@@ -39,7 +39,7 @@ func (bc Blockchain) AddBlock(block *Block) Blockchain {
 	return append(bc, block)
 }
 
-func (bc *Blockchain) ToJSON() []byte {
+func (bc Blockchain) ToJSON() []byte {
 	j, err := json.Marshal(bc)
 	if err != nil {
 		log.Fatal(err)
