@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package blockchain;
+
+option go_package = "github.com/asgaines/blockchain/protogo/blockchain";
+
+import "google/api/annotations.proto";
+
+message Tx {
+	double value = 1;
+	string for = 2;
+	string from = 3;
+	string to = 4;
+}
+
+service Blockchain {
+    rpc Ping(PingRequest) returns (PingResponse);
+    rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse);
+}
+
+message PingRequest {
+    int32 id = 1;
+}
+
+message PingResponse {
+    bool ok = 1;
+    int32 id = 2;
+}
+
+message SubmitTxRequest {
+    Tx tx = 1;
+}
+
+message SubmitTxResponse {
+    bool ok = 1;
+}

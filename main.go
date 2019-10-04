@@ -2,46 +2,32 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
+	"net"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
 
-	"github.com/asgaines/blockchain/cluster"
-	"github.com/asgaines/blockchain/transactions"
+	"github.com/asgaines/blockchain/nodes"
+	pb "github.com/asgaines/blockchain/protogo/blockchain"
+	"google.golang.org/grpc"
 )
 
-func AddTransaction(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
-	var tx transactions.Tx
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&tx); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	clstr.AddTransaction(tx)
-
-	if _, err := w.Write([]byte(`{"accepted": true}`)); err != nil {
-		log.Fatal(err)
-	}
-}
-
-var clstr cluster.Cluster
-
 func main() {
-	var numNodes int
+	var id int
+	var ID string
+	var port string
 	var targetDur time.Duration
 	var recalcPeriod int
 
-	flag.IntVar(&numNodes, "numnodes", 10, "Number of nodes to spin up for the blockchain network.")
+	// Need a way to assert id is unique across network
+	flag.IntVar(&id, "id", 1, "ID for node, should be unique across network")
+	flag.StringVar(&ID, "ID", "", "ID for miner running the node; their public key")
+	flag.StringVar(&port, "port", ":5050", "Address to listen on")
 	flag.DurationVar(&targetDur, "targetdur", 600, "The desired amount of time between block mining events. Used to control the difficulty of the mining.")
 	flag.IntVar(&recalcPeriod, "recalc", 2016, "How many blocks to solve before recalculating difficulty target")
 
@@ -50,19 +36,35 @@ func main() {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
-	clstr = cluster.NewCluster(numNodes, targetDur, recalcPeriod)
+	if ascii, err := ioutil.ReadFile("./assets/ascii.txt"); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println(string(ascii))
+	}
+
+	node := nodes.NewNode(int32(id), ID, targetDur, recalcPeriod)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		clstr.Run(ctx)
+		node.Run(ctx)
 	}()
 
-	http.Handle("/add/tx", http.HandlerFunc(AddTransaction))
+	gsrv := grpc.NewServer()
+	pb.RegisterBlockchainServer(gsrv, node)
 
-	server := http.Server{
-		Addr: ":8080",
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatal(err)
 	}
 
+	wg.Add(1)
+	go func() {
+		log.Printf("gRPC server listening on %s", port)
+		if err := gsrv.Serve(lis); err != nil {
+			log.Printf("gRPC server: %v", err)
+		}
+		wg.Done()
+	}()
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, os.Interrupt)
 
@@ -70,22 +72,8 @@ func main() {
 		<-sigs
 		go cancel()
 		go func() {
-			if err := server.Shutdown(ctx); err != nil {
-				log.Println(err)
-			}
+			gsrv.GracefulStop()
 		}()
-	}()
-
-	wg.Add(1)
-	go func() {
-		ascii, err := ioutil.ReadFile("./assets/ascii.txt")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		fmt.Println(string(ascii))
-		log.Println(server.ListenAndServe())
-		wg.Done()
 	}()
 
 	wg.Wait()

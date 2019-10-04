@@ -1,0 +1,36 @@
+excludes:
+  - go
+  - helm
+  - jenkins
+  - scala
+  - terraform
+  - vendor
+
+protoc:
+  version: 3.9.1
+  includes:
+    - /go/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis
+    - /go/src/github.com/grpc-ecosystem/grpc-gateway
+    - ../
+  allow_unused_imports: true
+
+generate:
+  go_options:
+    import_path: github.com/asgaines/blockchain/protogo
+    extra_modifiers:
+      google/api/annotations.proto: google.golang.org/genproto/googleapis/api/annotations
+      google/api/http.proto: google.golang.org/genproto/googleapis/api/annotations
+
+  plugins:
+    - name: go
+      type: go
+      flags: plugins=grpc
+      output: ../../../..
+
+    - name: grpc-gateway
+      flags: logtostderr=true
+      output: ../../../..
+
+    - name: cobra
+      flags: plugins=client,namer=dashed
+      output: ../../../..

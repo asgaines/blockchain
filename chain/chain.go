@@ -3,36 +3,16 @@ package chain
 import (
 	"encoding/json"
 	"log"
-	"os"
 	"time"
 
-	"github.com/asgaines/blockchain/transactions"
+	pb "github.com/asgaines/blockchain/protogo/blockchain"
 )
-
-const BlockchainFile = "storage.json"
 
 type Chain []*Block
 
-func InitBlockchain() Chain {
-	f, err := os.Open(BlockchainFile)
-	if err != nil {
-		genesis := NewBlock(&Block{}, []transactions.Tx{}, 0, 0)
-		return Chain{genesis}
-	}
-	defer f.Close()
-
-	var bc Chain
-
-	decoder := json.NewDecoder(f)
-	if err = decoder.Decode(&bc); err != nil {
-		log.Fatal(err)
-	}
-
-	if !bc.IsSolid() {
-		log.Fatal("Initialization failed due to broken chain")
-	}
-
-	return bc
+func NewChain() Chain {
+	genesis := NewBlock(&Block{}, []*pb.Tx{}, 0, 0, "")
+	return Chain{genesis}
 }
 
 func (bc Chain) AddBlock(block *Block) Chain {

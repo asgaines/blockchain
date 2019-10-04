@@ -1,0 +1,10 @@
+version: "3.3"
+services:
+  compile-proto:
+    build:
+      context: .
+      dockerfile: proto/Dockerfile
+    volumes:
+     - .:/go/src/github.com/asgaines/blockchain
+    tty: true
+    stdin_open: true
