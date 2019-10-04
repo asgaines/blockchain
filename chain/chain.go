@@ -1,4 +1,4 @@
-package blockchain
+package chain
 
 import (
 	"encoding/json"
@@ -11,17 +11,17 @@ import (
 
 const BlockchainFile = "storage.json"
 
-type Blockchain []*Block
+type Chain []*Block
 
-func InitBlockchain() Blockchain {
+func InitBlockchain() Chain {
 	f, err := os.Open(BlockchainFile)
 	if err != nil {
-		genesis := NewBlock(&Block{}, []transactions.Transaction{}, 0)
-		return Blockchain{genesis}
+		genesis := NewBlock(&Block{}, []transactions.Tx{}, 0, 0)
+		return Chain{genesis}
 	}
 	defer f.Close()
 
-	var bc Blockchain
+	var bc Chain
 
 	decoder := json.NewDecoder(f)
 	if err = decoder.Decode(&bc); err != nil {
@@ -35,11 +35,11 @@ func InitBlockchain() Blockchain {
 	return bc
 }
 
-func (bc Blockchain) AddBlock(block *Block) Blockchain {
+func (bc Chain) AddBlock(block *Block) Chain {
 	return append(bc, block)
 }
 
-func (bc Blockchain) ToJSON() []byte {
+func (bc Chain) ToJSON() []byte {
 	j, err := json.Marshal(bc)
 	if err != nil {
 		log.Fatal(err)
@@ -48,7 +48,7 @@ func (bc Blockchain) ToJSON() []byte {
 	return j
 }
 
-func (bc Blockchain) IsSolid() bool {
+func (bc Chain) IsSolid() bool {
 	for i, block := range bc[1:] {
 		prev := bc[i]
 
@@ -63,11 +63,11 @@ func (bc Blockchain) IsSolid() bool {
 	return true
 }
 
-func (bc Blockchain) LastLink() *Block {
+func (bc Chain) LastLink() *Block {
 	return bc[len(bc)-1]
 }
 
-func (bc Blockchain) TimeSinceLastLink() time.Duration {
+func (bc Chain) TimeSinceLastLink() time.Duration {
 	unixTsNano := bc.LastLink().Timestamp
 	unixTsSec := unixTsNano / 1_000_000_000
 

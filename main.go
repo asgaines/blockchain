@@ -11,8 +11,8 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
-	"github.com/asgaines/blockchain/blockchain"
 	"github.com/asgaines/blockchain/cluster"
 	"github.com/asgaines/blockchain/transactions"
 )
@@ -20,7 +20,7 @@ import (
 func AddTransaction(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var tx transactions.Transaction
+	var tx transactions.Tx
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tx); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -29,7 +29,7 @@ func AddTransaction(w http.ResponseWriter, r *http.Request) {
 
 	clstr.AddTransaction(tx)
 
-	if _, err := w.Write([]byte("{\"accepted\": true}")); err != nil {
+	if _, err := w.Write([]byte(`{"accepted": true}`)); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -38,34 +38,36 @@ var clstr cluster.Cluster
 
 func main() {
 	var numNodes int
-	var targetMin float64
-	flag.IntVar(&numNodes, "numnodes", 10, "Number of nodes to spin up for the blockchain network.")
-	flag.Float64Var(&targetMin, "targetminutes", 1, "The target for the lapse between block additions. Used to control the difficulty of the mining.")
-	flag.Parse()
+	var targetDur time.Duration
+	var recalcPeriod int
 
-	chain := blockchain.InitBlockchain()
+	flag.IntVar(&numNodes, "numnodes", 10, "Number of nodes to spin up for the blockchain network.")
+	flag.DurationVar(&targetDur, "targetdur", 600, "The desired amount of time between block mining events. Used to control the difficulty of the mining.")
+	flag.IntVar(&recalcPeriod, "recalc", 2016, "How many blocks to solve before recalculating difficulty target")
+
+	flag.Parse()
 
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
-	clstr = cluster.NewCluster(numNodes, chain, targetMin)
+	clstr = cluster.NewCluster(numNodes, targetDur, recalcPeriod)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		clstr.Run(ctx)
 	}()
 
-	http.Handle("/add/lilbits", http.HandlerFunc(AddTransaction))
+	http.Handle("/add/tx", http.HandlerFunc(AddTransaction))
 
 	server := http.Server{
 		Addr: ":8080",
 	}
 
-	sigRec := make(chan os.Signal)
-	signal.Notify(sigRec, os.Interrupt)
+	sigs := make(chan os.Signal)
+	signal.Notify(sigs, os.Interrupt)
 
 	go func() {
-		<-sigRec
+		<-sigs
 		go cancel()
 		go func() {
 			if err := server.Shutdown(ctx); err != nil {
