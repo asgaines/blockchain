@@ -4,30 +4,23 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"strconv"
-	"time"
+
+	"github.com/golang/protobuf/ptypes"
 
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
 )
 
-// Block represents a link in the blockchain
-type Block struct {
-	Timestamp int64    `json:"timestamp"`
-	Hash      uint64   `json:"hash"`
-	PrevHash  uint64   `json:"prevhash"`
-	Nonce     uint64   `json:"nonce"`
-	Target    uint64   `json:"target"`
-	Recipient string   `json:"recipient"`
-	Txs       []*pb.Tx `json:"txs"`
-}
+// Block is a wrapper for the protobuf block representation: a link in the blockchain
+type Block pb.Block
 
 // NewBlock instantiates a Block from a payload
-func NewBlock(prev *Block, txs []*pb.Tx, nonce uint64, target uint64, recipient string) *Block {
+func NewBlock(prev *Block, txs []*pb.Tx, nonce uint64, target uint64, pubkey string) *Block {
 	b := Block{
-		Timestamp: time.Now().UTC().UnixNano(),
-		PrevHash:  prev.Hash,
+		Timestamp: ptypes.TimestampNow(),
+		Prevhash:  prev.Hash,
 		Nonce:     nonce,
 		Target:    target,
-		Recipient: recipient,
+		Pubkey:    pubkey,
 		Txs:       txs,
 	}
 
@@ -36,25 +29,29 @@ func NewBlock(prev *Block, txs []*pb.Tx, nonce uint64, target uint64, recipient 
 	return &b
 }
 
+func (b *Block) ToProto() *pb.Block {
+	return (*pb.Block)(b)
+}
+
 func (b Block) makeHash() uint64 {
-	concat := strconv.FormatInt(b.Timestamp, 10)
-	concat += strconv.FormatUint(b.PrevHash, 10)
+	concat := ptypes.TimestampString(b.Timestamp)
+	concat += strconv.FormatUint(b.Prevhash, 10)
 	concat += strconv.FormatUint(b.Nonce, 10)
 	concat += strconv.FormatUint(b.Target, 10)
-	concat += b.Recipient
+	concat += b.Pubkey
 
 	for _, tx := range b.Txs {
-		concat += tx.String()
+		concat += strconv.FormatUint(tx.Hash, 10)
 	}
 
 	h := sha256.New()
 	h.Write([]byte(concat))
-	hashed := h.Sum(nil)
+	hash := h.Sum(nil)
 
 	// Only take most significant 8 bytes
 	// A full implementation uses a 256 bit number,
 	// but limiting here to Go builtin type for ease
-	top8 := hashed[0:8]
+	top8 := hash[:8]
 
 	return binary.BigEndian.Uint64(top8)
 }

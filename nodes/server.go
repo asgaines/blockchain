@@ -4,20 +4,45 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
+	"strconv"
 
+	"github.com/asgaines/blockchain/chain"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
+	"github.com/asgaines/blockchain/transactions"
+	"github.com/golang/protobuf/ptypes"
+	grpcpeer "google.golang.org/grpc/peer"
 )
 
-func (n *node) Ping(ctx context.Context, r *pb.PingRequest) (*pb.PingResponse, error) {
-	// TODO: add the peer making the ping as a peer of this node
-	// TODO: share this node's list of peers to the node making the ping
-	log.Printf("Got a ping from %d\n", r.GetId())
-	return &pb.PingResponse{Ok: true, Id: n.id}, nil
+func (n *node) Discover(ctx context.Context, r *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
+	peerAddr := n.getPeerAddr(ctx, r.ServerPort)
+
+	n.appendAddrs(append(r.GetKnownAddrs(), peerAddr))
+
+	return &pb.DiscoverResponse{
+		Ok:         true,
+		NodeID:     n.getID().ToProto(),
+		KnownAddrs: n.getKnownAddrsExcept([]string{peerAddr}),
+	}, nil
 }
 
-func (n *node) SubmitTx(ctx context.Context, r *pb.SubmitTxRequest) (*pb.SubmitTxResponse, error) {
+func (n *node) ShareChain(ctx context.Context, r *pb.ShareChainRequest) (*pb.ShareChainResponse, error) {
+	accepted := n.setChain((*chain.Chain)(r.Chain))
+	//log.Printf("Did I accept peer chain? %v\n", accepted)
+	return &pb.ShareChainResponse{Accepted: accepted}, nil
+}
+
+func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxResponse, error) {
+	if r.Tx.GetTimestamp() == nil {
+		r.Tx.Timestamp = ptypes.TimestampNow()
+	}
+
+	if r.Tx.GetHash() == 0 {
+		transactions.SetHash(r.Tx)
+	}
+
 	if r.Tx.GetValue() <= 0 {
-		return nil, errors.New("`value` must not be greater than 0")
+		return nil, errors.New("`value` must be greater than 0")
 	}
 
 	if r.Tx.GetFrom() == "" {
@@ -28,7 +53,27 @@ func (n *node) SubmitTx(ctx context.Context, r *pb.SubmitTxRequest) (*pb.SubmitT
 		return nil, errors.New("`to` must not be empty")
 	}
 
-	n.AddTxToQueue(r.Tx)
+	n.miner.AddTx(r.Tx)
 
-	return &pb.SubmitTxResponse{Ok: true}, nil
+	var except NodeID
+	if nodeID := r.GetNodeID(); nodeID != nil {
+		except = NodeIDFrom(nodeID)
+	}
+	n.propagateTx(r.Tx, except)
+
+	return &pb.ShareTxResponse{Accepted: true}, nil
+}
+
+func (n *node) getPeerAddr(ctx context.Context, port int32) string {
+	gpeer, ok := grpcpeer.FromContext(ctx)
+	if !ok {
+		log.Println("could not get address of peer")
+	}
+
+	host, _, err := net.SplitHostPort(gpeer.Addr.String())
+	if err != nil {
+		log.Println(err)
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(int(port)))
 }

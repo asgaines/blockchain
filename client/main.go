@@ -28,8 +28,8 @@ var cmd = &cobra.Command{
 }
 
 func main() {
-	pb.BlockchainClientCommand.Short = "Blockchain gRPC client"
-	cmd.AddCommand(pb.BlockchainClientCommand)
+	pb.NodeClientCommand.Short = "Blockchain gRPC client"
+	cmd.AddCommand(pb.NodeClientCommand)
 
 	if err := cmd.Execute(); err != nil {
 		log.Fatalf("Failed running command: %s", err)

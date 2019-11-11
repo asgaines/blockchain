@@ -9,7 +9,7 @@ It is generated from these files:
 	proto/api.proto
 
 It has these top-level commands:
-	BlockchainClientCommand
+	NodeClientCommand
 */
 
 package blockchain
@@ -78,9 +78,9 @@ var _ x509.Certificate
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-var _DefaultBlockchainClientCommandConfig = _NewBlockchainClientCommandConfig()
+var _DefaultNodeClientCommandConfig = _NewNodeClientCommandConfig()
 
-type _BlockchainClientCommandConfig struct {
+type _NodeClientCommandConfig struct {
 	ServerAddr         string        `envconfig:"SERVER_ADDR" default:"localhost:8080"`
 	RequestFile        string        `envconfig:"REQUEST_FILE"`
 	PrintSampleRequest bool          `envconfig:"PRINT_SAMPLE_REQUEST"`
@@ -98,13 +98,13 @@ type _BlockchainClientCommandConfig struct {
 	JWTKeyFile         string        `envconfig:"JWT_KEY_FILE"`
 }
 
-func _NewBlockchainClientCommandConfig() *_BlockchainClientCommandConfig {
-	c := &_BlockchainClientCommandConfig{}
+func _NewNodeClientCommandConfig() *_NodeClientCommandConfig {
+	c := &_NodeClientCommandConfig{}
 	envconfig.Process("", c)
 	return c
 }
 
-func (o *_BlockchainClientCommandConfig) AddFlags(fs *pflag.FlagSet) {
+func (o *_NodeClientCommandConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&o.ServerAddr, "server-addr", "s", o.ServerAddr, "server address in form of host:port")
 	fs.StringVarP(&o.RequestFile, "request-file", "f", o.RequestFile, "client request file (must be json, yaml, or xml); use \"-\" for stdin + json")
 	fs.BoolVarP(&o.PrintSampleRequest, "print-sample-request", "p", o.PrintSampleRequest, "print sample request file and exit")
@@ -122,12 +122,12 @@ func (o *_BlockchainClientCommandConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.JWTKeyFile, "jwt-key-file", o.JWTKeyFile, "jwt key file")
 }
 
-var BlockchainClientCommand = &cobra.Command{
-	Use: "blockchain",
+var NodeClientCommand = &cobra.Command{
+	Use: "node",
 }
 
-func _DialBlockchain() (*grpc.ClientConn, BlockchainClient, error) {
-	cfg := _DefaultBlockchainClientCommandConfig
+func _DialNode() (*grpc.ClientConn, NodeClient, error) {
+	cfg := _DefaultNodeClientCommandConfig
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithTimeout(cfg.Timeout),
@@ -193,13 +193,13 @@ func _DialBlockchain() (*grpc.ClientConn, BlockchainClient, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return conn, NewBlockchainClient(conn), nil
+	return conn, NewNodeClient(conn), nil
 }
 
-type _BlockchainRoundTripFunc func(cli BlockchainClient, in iocodec.Decoder, out iocodec.Encoder) error
+type _NodeRoundTripFunc func(cli NodeClient, in iocodec.Decoder, out iocodec.Encoder) error
 
-func _BlockchainRoundTrip(sample interface{}, fn _BlockchainRoundTripFunc) error {
-	cfg := _DefaultBlockchainClientCommandConfig
+func _NodeRoundTrip(sample interface{}, fn _NodeRoundTripFunc) error {
+	cfg := _DefaultNodeClientCommandConfig
 	var em iocodec.EncoderMaker
 	var ok bool
 	if cfg.ResponseFormat == "" {
@@ -232,7 +232,7 @@ func _BlockchainRoundTrip(sample interface{}, fn _BlockchainRoundTripFunc) error
 		}
 		d = dm.NewDecoder(f)
 	}
-	conn, client, err := _DialBlockchain()
+	conn, client, err := _DialNode()
 	if err != nil {
 		return err
 	}
@@ -240,30 +240,30 @@ func _BlockchainRoundTrip(sample interface{}, fn _BlockchainRoundTripFunc) error
 	return fn(client, d, em.NewEncoder(os.Stdout))
 }
 
-var _BlockchainPingClientCommand = &cobra.Command{
-	Use:  "ping",
-	Long: "Ping client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",
+var _NodeDiscoverClientCommand = &cobra.Command{
+	Use:  "discover",
+	Long: "Discover client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",
 	Example: `
 Save a sample request to a file (or refer to your protobuf descriptor to create one):
-	ping -p > req.json
+	discover -p > req.json
 
 Submit request using file:
-	ping -f req.json
+	discover -f req.json
 
 Authenticate using the Authorization header (requires transport security):
 	export AUTH_TOKEN=your_access_token
 	export SERVER_ADDR=api.example.com:443
-	echo '{json}' | ping --tls`,
+	echo '{json}' | discover --tls`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var v PingRequest
-		err := _BlockchainRoundTrip(v, func(cli BlockchainClient, in iocodec.Decoder, out iocodec.Encoder) error {
+		var v DiscoverRequest
+		err := _NodeRoundTrip(v, func(cli NodeClient, in iocodec.Decoder, out iocodec.Encoder) error {
 
 			err := in.Decode(&v)
 			if err != nil {
 				return err
 			}
 
-			resp, err := cli.Ping(context.Background(), &v)
+			resp, err := cli.Discover(context.Background(), &v)
 
 			if err != nil {
 				return err
@@ -279,34 +279,34 @@ Authenticate using the Authorization header (requires transport security):
 }
 
 func init() {
-	BlockchainClientCommand.AddCommand(_BlockchainPingClientCommand)
-	_DefaultBlockchainClientCommandConfig.AddFlags(_BlockchainPingClientCommand.Flags())
+	NodeClientCommand.AddCommand(_NodeDiscoverClientCommand)
+	_DefaultNodeClientCommandConfig.AddFlags(_NodeDiscoverClientCommand.Flags())
 }
 
-var _BlockchainSubmitTxClientCommand = &cobra.Command{
-	Use:  "submittx",
-	Long: "SubmitTx client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",
+var _NodeShareChainClientCommand = &cobra.Command{
+	Use:  "sharechain",
+	Long: "ShareChain client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",
 	Example: `
 Save a sample request to a file (or refer to your protobuf descriptor to create one):
-	submittx -p > req.json
+	sharechain -p > req.json
 
 Submit request using file:
-	submittx -f req.json
+	sharechain -f req.json
 
 Authenticate using the Authorization header (requires transport security):
 	export AUTH_TOKEN=your_access_token
 	export SERVER_ADDR=api.example.com:443
-	echo '{json}' | submittx --tls`,
+	echo '{json}' | sharechain --tls`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var v SubmitTxRequest
-		err := _BlockchainRoundTrip(v, func(cli BlockchainClient, in iocodec.Decoder, out iocodec.Encoder) error {
+		var v ShareChainRequest
+		err := _NodeRoundTrip(v, func(cli NodeClient, in iocodec.Decoder, out iocodec.Encoder) error {
 
 			err := in.Decode(&v)
 			if err != nil {
 				return err
 			}
 
-			resp, err := cli.SubmitTx(context.Background(), &v)
+			resp, err := cli.ShareChain(context.Background(), &v)
 
 			if err != nil {
 				return err
@@ -322,6 +322,49 @@ Authenticate using the Authorization header (requires transport security):
 }
 
 func init() {
-	BlockchainClientCommand.AddCommand(_BlockchainSubmitTxClientCommand)
-	_DefaultBlockchainClientCommandConfig.AddFlags(_BlockchainSubmitTxClientCommand.Flags())
+	NodeClientCommand.AddCommand(_NodeShareChainClientCommand)
+	_DefaultNodeClientCommandConfig.AddFlags(_NodeShareChainClientCommand.Flags())
+}
+
+var _NodeShareTxClientCommand = &cobra.Command{
+	Use:  "sharetx",
+	Long: "ShareTx client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",
+	Example: `
+Save a sample request to a file (or refer to your protobuf descriptor to create one):
+	sharetx -p > req.json
+
+Submit request using file:
+	sharetx -f req.json
+
+Authenticate using the Authorization header (requires transport security):
+	export AUTH_TOKEN=your_access_token
+	export SERVER_ADDR=api.example.com:443
+	echo '{json}' | sharetx --tls`,
+	Run: func(cmd *cobra.Command, args []string) {
+		var v ShareTxRequest
+		err := _NodeRoundTrip(v, func(cli NodeClient, in iocodec.Decoder, out iocodec.Encoder) error {
+
+			err := in.Decode(&v)
+			if err != nil {
+				return err
+			}
+
+			resp, err := cli.ShareTx(context.Background(), &v)
+
+			if err != nil {
+				return err
+			}
+
+			return out.Encode(resp)
+
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
+func init() {
+	NodeClientCommand.AddCommand(_NodeShareTxClientCommand)
+	_DefaultNodeClientCommandConfig.AddFlags(_NodeShareTxClientCommand.Flags())
 }

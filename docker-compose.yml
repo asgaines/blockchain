@@ -1,5 +1,35 @@
-version: "3.3"
+version: "3.5"
 services:
+  bcnode1:
+    build:
+      context: .
+    container_name: bcnode1
+    ports:
+      - "20403:20403"
+    volumes:
+      - .:/go/src/github.com/asgaines/blockchain
+    entrypoint: ["/go/bin/blockchain"]
+    environment:
+      - BLOCKCHAIN_PUBKEY
+      - BLOCKCHAIN_ADDRS
+    command: ["-addr=:20403", "-targetdur=5s", "-recalc=2", "-poolid=0"]
+    networks:
+      - bcnet
+  bcnode2:
+    build:
+      context: .
+    container_name: bcnode2
+    ports:
+      - 20404:20403
+    volumes:
+      - .:/go/src/github.com/asgaines/blockchain
+    entrypoint: ["/go/bin/blockchain"]
+    environment:
+      - BLOCKCHAIN_PUBKEY
+      - BLOCKCHAIN_ADDRS
+    command: ["-addr=:20403", "-targetdur=5s", "-recalc=2", "-poolid=0"]
+    networks:
+      - bcnet
   compile-proto:
     build:
       context: .
@@ -8,3 +38,6 @@ services:
      - .:/go/src/github.com/asgaines/blockchain
     tty: true
     stdin_open: true
+networks:
+  bcnet:
+    name: bcnet

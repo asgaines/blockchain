@@ -7,6 +7,7 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -25,21 +26,199 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type Tx struct {
-	Value                float64  `protobuf:"fixed64,1,opt,name=value,proto3" json:"value,omitempty"`
-	For                  string   `protobuf:"bytes,2,opt,name=for,proto3" json:"for,omitempty"`
-	From                 string   `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
-	To                   string   `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
+type Block struct {
+	Timestamp            *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Hash                 uint64               `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	Prevhash             uint64               `protobuf:"varint,3,opt,name=prevhash,proto3" json:"prevhash,omitempty"`
+	Nonce                uint64               `protobuf:"varint,4,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	Target               uint64               `protobuf:"varint,5,opt,name=target,proto3" json:"target,omitempty"`
+	Pubkey               string               `protobuf:"bytes,6,opt,name=pubkey,proto3" json:"pubkey,omitempty"`
+	Txs                  []*Tx                `protobuf:"bytes,7,rep,name=txs,proto3" json:"txs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
+}
+
+func (m *Block) Reset()         { *m = Block{} }
+func (m *Block) String() string { return proto.CompactTextString(m) }
+func (*Block) ProtoMessage()    {}
+func (*Block) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{0}
+}
+
+func (m *Block) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Block.Unmarshal(m, b)
+}
+func (m *Block) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Block.Marshal(b, m, deterministic)
+}
+func (m *Block) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Block.Merge(m, src)
+}
+func (m *Block) XXX_Size() int {
+	return xxx_messageInfo_Block.Size(m)
+}
+func (m *Block) XXX_DiscardUnknown() {
+	xxx_messageInfo_Block.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Block proto.InternalMessageInfo
+
+func (m *Block) GetTimestamp() *timestamp.Timestamp {
+	if m != nil {
+		return m.Timestamp
+	}
+	return nil
+}
+
+func (m *Block) GetHash() uint64 {
+	if m != nil {
+		return m.Hash
+	}
+	return 0
+}
+
+func (m *Block) GetPrevhash() uint64 {
+	if m != nil {
+		return m.Prevhash
+	}
+	return 0
+}
+
+func (m *Block) GetNonce() uint64 {
+	if m != nil {
+		return m.Nonce
+	}
+	return 0
+}
+
+func (m *Block) GetTarget() uint64 {
+	if m != nil {
+		return m.Target
+	}
+	return 0
+}
+
+func (m *Block) GetPubkey() string {
+	if m != nil {
+		return m.Pubkey
+	}
+	return ""
+}
+
+func (m *Block) GetTxs() []*Tx {
+	if m != nil {
+		return m.Txs
+	}
+	return nil
+}
+
+type Chain struct {
+	Blocks               []*Block `protobuf:"bytes,1,rep,name=blocks,proto3" json:"blocks,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Chain) Reset()         { *m = Chain{} }
+func (m *Chain) String() string { return proto.CompactTextString(m) }
+func (*Chain) ProtoMessage()    {}
+func (*Chain) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{1}
+}
+
+func (m *Chain) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Chain.Unmarshal(m, b)
+}
+func (m *Chain) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Chain.Marshal(b, m, deterministic)
+}
+func (m *Chain) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Chain.Merge(m, src)
+}
+func (m *Chain) XXX_Size() int {
+	return xxx_messageInfo_Chain.Size(m)
+}
+func (m *Chain) XXX_DiscardUnknown() {
+	xxx_messageInfo_Chain.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Chain proto.InternalMessageInfo
+
+func (m *Chain) GetBlocks() []*Block {
+	if m != nil {
+		return m.Blocks
+	}
+	return nil
+}
+
+type NodeID struct {
+	// pubkey is the public key of the client
+	Pubkey string `protobuf:"bytes,1,opt,name=pubkey,proto3" json:"pubkey,omitempty"`
+	// id is the unique identifier of a node within a pool; a collection of nodes
+	// mining for the same pubkey
+	Id                   int32    `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *NodeID) Reset()         { *m = NodeID{} }
+func (m *NodeID) String() string { return proto.CompactTextString(m) }
+func (*NodeID) ProtoMessage()    {}
+func (*NodeID) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{2}
+}
+
+func (m *NodeID) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_NodeID.Unmarshal(m, b)
+}
+func (m *NodeID) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_NodeID.Marshal(b, m, deterministic)
+}
+func (m *NodeID) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NodeID.Merge(m, src)
+}
+func (m *NodeID) XXX_Size() int {
+	return xxx_messageInfo_NodeID.Size(m)
+}
+func (m *NodeID) XXX_DiscardUnknown() {
+	xxx_messageInfo_NodeID.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NodeID proto.InternalMessageInfo
+
+func (m *NodeID) GetPubkey() string {
+	if m != nil {
+		return m.Pubkey
+	}
+	return ""
+}
+
+func (m *NodeID) GetId() int32 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+type Tx struct {
+	Timestamp            *timestamp.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Value                float64              `protobuf:"fixed64,2,opt,name=value,proto3" json:"value,omitempty"`
+	For                  string               `protobuf:"bytes,3,opt,name=for,proto3" json:"for,omitempty"`
+	From                 string               `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`
+	To                   string               `protobuf:"bytes,5,opt,name=to,proto3" json:"to,omitempty"`
+	Hash                 uint64               `protobuf:"varint,6,opt,name=hash,proto3" json:"hash,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
 func (m *Tx) Reset()         { *m = Tx{} }
 func (m *Tx) String() string { return proto.CompactTextString(m) }
 func (*Tx) ProtoMessage()    {}
 func (*Tx) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ecf0878b123623e2, []int{0}
+	return fileDescriptor_ecf0878b123623e2, []int{3}
 }
 
 func (m *Tx) XXX_Unmarshal(b []byte) error {
@@ -59,6 +238,13 @@ func (m *Tx) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_Tx proto.InternalMessageInfo
+
+func (m *Tx) GetTimestamp() *timestamp.Timestamp {
+	if m != nil {
+		return m.Timestamp
+	}
+	return nil
+}
 
 func (m *Tx) GetValue() float64 {
 	if m != nil {
@@ -88,201 +274,377 @@ func (m *Tx) GetTo() string {
 	return ""
 }
 
-type PingRequest struct {
-	Id                   int32    `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *PingRequest) Reset()         { *m = PingRequest{} }
-func (m *PingRequest) String() string { return proto.CompactTextString(m) }
-func (*PingRequest) ProtoMessage()    {}
-func (*PingRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ecf0878b123623e2, []int{1}
-}
-
-func (m *PingRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PingRequest.Unmarshal(m, b)
-}
-func (m *PingRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PingRequest.Marshal(b, m, deterministic)
-}
-func (m *PingRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PingRequest.Merge(m, src)
-}
-func (m *PingRequest) XXX_Size() int {
-	return xxx_messageInfo_PingRequest.Size(m)
-}
-func (m *PingRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_PingRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PingRequest proto.InternalMessageInfo
-
-func (m *PingRequest) GetId() int32 {
+func (m *Tx) GetHash() uint64 {
 	if m != nil {
-		return m.Id
+		return m.Hash
 	}
 	return 0
 }
 
-type PingResponse struct {
-	Ok                   bool     `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
-	Id                   int32    `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+type DiscoverRequest struct {
+	NodeID *NodeID `protobuf:"bytes,1,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
+	// servePort is the port that the client's server is listening on.
+	// It allows the pinged server to reach back out to share their data.
+	ServerPort int32 `protobuf:"varint,2,opt,name=serverPort,proto3" json:"serverPort,omitempty"`
+	// peerAddrs is the collection of addresses of known nodes.
+	// They can be used to further discover more peers
+	KnownAddrs           []string `protobuf:"bytes,3,rep,name=knownAddrs,proto3" json:"knownAddrs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *PingResponse) Reset()         { *m = PingResponse{} }
-func (m *PingResponse) String() string { return proto.CompactTextString(m) }
-func (*PingResponse) ProtoMessage()    {}
-func (*PingResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ecf0878b123623e2, []int{2}
+func (m *DiscoverRequest) Reset()         { *m = DiscoverRequest{} }
+func (m *DiscoverRequest) String() string { return proto.CompactTextString(m) }
+func (*DiscoverRequest) ProtoMessage()    {}
+func (*DiscoverRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{4}
 }
 
-func (m *PingResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PingResponse.Unmarshal(m, b)
+func (m *DiscoverRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DiscoverRequest.Unmarshal(m, b)
 }
-func (m *PingResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PingResponse.Marshal(b, m, deterministic)
+func (m *DiscoverRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DiscoverRequest.Marshal(b, m, deterministic)
 }
-func (m *PingResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PingResponse.Merge(m, src)
+func (m *DiscoverRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DiscoverRequest.Merge(m, src)
 }
-func (m *PingResponse) XXX_Size() int {
-	return xxx_messageInfo_PingResponse.Size(m)
+func (m *DiscoverRequest) XXX_Size() int {
+	return xxx_messageInfo_DiscoverRequest.Size(m)
 }
-func (m *PingResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_PingResponse.DiscardUnknown(m)
+func (m *DiscoverRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_DiscoverRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_PingResponse proto.InternalMessageInfo
+var xxx_messageInfo_DiscoverRequest proto.InternalMessageInfo
 
-func (m *PingResponse) GetOk() bool {
+func (m *DiscoverRequest) GetNodeID() *NodeID {
+	if m != nil {
+		return m.NodeID
+	}
+	return nil
+}
+
+func (m *DiscoverRequest) GetServerPort() int32 {
+	if m != nil {
+		return m.ServerPort
+	}
+	return 0
+}
+
+func (m *DiscoverRequest) GetKnownAddrs() []string {
+	if m != nil {
+		return m.KnownAddrs
+	}
+	return nil
+}
+
+type DiscoverResponse struct {
+	NodeID *NodeID `protobuf:"bytes,1,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
+	// ok signifies to the pinger that it is ok to connect with and share
+	// new tx and block solve propagations
+	Ok bool `protobuf:"varint,2,opt,name=ok,proto3" json:"ok,omitempty"`
+	// peerAddrs is the collection of addresses of other known nodes.
+	// They can be used to further discover more peers
+	KnownAddrs           []string `protobuf:"bytes,3,rep,name=knownAddrs,proto3" json:"knownAddrs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DiscoverResponse) Reset()         { *m = DiscoverResponse{} }
+func (m *DiscoverResponse) String() string { return proto.CompactTextString(m) }
+func (*DiscoverResponse) ProtoMessage()    {}
+func (*DiscoverResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{5}
+}
+
+func (m *DiscoverResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DiscoverResponse.Unmarshal(m, b)
+}
+func (m *DiscoverResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DiscoverResponse.Marshal(b, m, deterministic)
+}
+func (m *DiscoverResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DiscoverResponse.Merge(m, src)
+}
+func (m *DiscoverResponse) XXX_Size() int {
+	return xxx_messageInfo_DiscoverResponse.Size(m)
+}
+func (m *DiscoverResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DiscoverResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DiscoverResponse proto.InternalMessageInfo
+
+func (m *DiscoverResponse) GetNodeID() *NodeID {
+	if m != nil {
+		return m.NodeID
+	}
+	return nil
+}
+
+func (m *DiscoverResponse) GetOk() bool {
 	if m != nil {
 		return m.Ok
 	}
 	return false
 }
 
-func (m *PingResponse) GetId() int32 {
+func (m *DiscoverResponse) GetKnownAddrs() []string {
 	if m != nil {
-		return m.Id
+		return m.KnownAddrs
 	}
-	return 0
+	return nil
 }
 
-type SubmitTxRequest struct {
-	Tx                   *Tx      `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
+type ShareChainRequest struct {
+	NodeID *NodeID `protobuf:"bytes,1,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
+	Chain  *Chain  `protobuf:"bytes,2,opt,name=chain,proto3" json:"chain,omitempty"`
+	// servePort is the port that the client's server is listening on.
+	// It allows the pinged server to reach back out to share their data.
+	ServerPort           int32    `protobuf:"varint,3,opt,name=serverPort,proto3" json:"serverPort,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SubmitTxRequest) Reset()         { *m = SubmitTxRequest{} }
-func (m *SubmitTxRequest) String() string { return proto.CompactTextString(m) }
-func (*SubmitTxRequest) ProtoMessage()    {}
-func (*SubmitTxRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ecf0878b123623e2, []int{3}
+func (m *ShareChainRequest) Reset()         { *m = ShareChainRequest{} }
+func (m *ShareChainRequest) String() string { return proto.CompactTextString(m) }
+func (*ShareChainRequest) ProtoMessage()    {}
+func (*ShareChainRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{6}
 }
 
-func (m *SubmitTxRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SubmitTxRequest.Unmarshal(m, b)
+func (m *ShareChainRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ShareChainRequest.Unmarshal(m, b)
 }
-func (m *SubmitTxRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SubmitTxRequest.Marshal(b, m, deterministic)
+func (m *ShareChainRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ShareChainRequest.Marshal(b, m, deterministic)
 }
-func (m *SubmitTxRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubmitTxRequest.Merge(m, src)
+func (m *ShareChainRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ShareChainRequest.Merge(m, src)
 }
-func (m *SubmitTxRequest) XXX_Size() int {
-	return xxx_messageInfo_SubmitTxRequest.Size(m)
+func (m *ShareChainRequest) XXX_Size() int {
+	return xxx_messageInfo_ShareChainRequest.Size(m)
 }
-func (m *SubmitTxRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubmitTxRequest.DiscardUnknown(m)
+func (m *ShareChainRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ShareChainRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SubmitTxRequest proto.InternalMessageInfo
+var xxx_messageInfo_ShareChainRequest proto.InternalMessageInfo
 
-func (m *SubmitTxRequest) GetTx() *Tx {
+func (m *ShareChainRequest) GetNodeID() *NodeID {
+	if m != nil {
+		return m.NodeID
+	}
+	return nil
+}
+
+func (m *ShareChainRequest) GetChain() *Chain {
+	if m != nil {
+		return m.Chain
+	}
+	return nil
+}
+
+func (m *ShareChainRequest) GetServerPort() int32 {
+	if m != nil {
+		return m.ServerPort
+	}
+	return 0
+}
+
+type ShareChainResponse struct {
+	Accepted             bool     `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ShareChainResponse) Reset()         { *m = ShareChainResponse{} }
+func (m *ShareChainResponse) String() string { return proto.CompactTextString(m) }
+func (*ShareChainResponse) ProtoMessage()    {}
+func (*ShareChainResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{7}
+}
+
+func (m *ShareChainResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ShareChainResponse.Unmarshal(m, b)
+}
+func (m *ShareChainResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ShareChainResponse.Marshal(b, m, deterministic)
+}
+func (m *ShareChainResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ShareChainResponse.Merge(m, src)
+}
+func (m *ShareChainResponse) XXX_Size() int {
+	return xxx_messageInfo_ShareChainResponse.Size(m)
+}
+func (m *ShareChainResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ShareChainResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ShareChainResponse proto.InternalMessageInfo
+
+func (m *ShareChainResponse) GetAccepted() bool {
+	if m != nil {
+		return m.Accepted
+	}
+	return false
+}
+
+type ShareTxRequest struct {
+	NodeID *NodeID `protobuf:"bytes,1,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
+	Tx     *Tx     `protobuf:"bytes,2,opt,name=tx,proto3" json:"tx,omitempty"`
+	// servePort is the port that the client's server is listening on.
+	// It allows the pinged server to reach back out to share their data.
+	ServerPort           int32    `protobuf:"varint,3,opt,name=serverPort,proto3" json:"serverPort,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ShareTxRequest) Reset()         { *m = ShareTxRequest{} }
+func (m *ShareTxRequest) String() string { return proto.CompactTextString(m) }
+func (*ShareTxRequest) ProtoMessage()    {}
+func (*ShareTxRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{8}
+}
+
+func (m *ShareTxRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ShareTxRequest.Unmarshal(m, b)
+}
+func (m *ShareTxRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ShareTxRequest.Marshal(b, m, deterministic)
+}
+func (m *ShareTxRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ShareTxRequest.Merge(m, src)
+}
+func (m *ShareTxRequest) XXX_Size() int {
+	return xxx_messageInfo_ShareTxRequest.Size(m)
+}
+func (m *ShareTxRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ShareTxRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ShareTxRequest proto.InternalMessageInfo
+
+func (m *ShareTxRequest) GetNodeID() *NodeID {
+	if m != nil {
+		return m.NodeID
+	}
+	return nil
+}
+
+func (m *ShareTxRequest) GetTx() *Tx {
 	if m != nil {
 		return m.Tx
 	}
 	return nil
 }
 
-type SubmitTxResponse struct {
-	Ok                   bool     `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+func (m *ShareTxRequest) GetServerPort() int32 {
+	if m != nil {
+		return m.ServerPort
+	}
+	return 0
+}
+
+type ShareTxResponse struct {
+	Accepted             bool     `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SubmitTxResponse) Reset()         { *m = SubmitTxResponse{} }
-func (m *SubmitTxResponse) String() string { return proto.CompactTextString(m) }
-func (*SubmitTxResponse) ProtoMessage()    {}
-func (*SubmitTxResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_ecf0878b123623e2, []int{4}
+func (m *ShareTxResponse) Reset()         { *m = ShareTxResponse{} }
+func (m *ShareTxResponse) String() string { return proto.CompactTextString(m) }
+func (*ShareTxResponse) ProtoMessage()    {}
+func (*ShareTxResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_ecf0878b123623e2, []int{9}
 }
 
-func (m *SubmitTxResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SubmitTxResponse.Unmarshal(m, b)
+func (m *ShareTxResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ShareTxResponse.Unmarshal(m, b)
 }
-func (m *SubmitTxResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SubmitTxResponse.Marshal(b, m, deterministic)
+func (m *ShareTxResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ShareTxResponse.Marshal(b, m, deterministic)
 }
-func (m *SubmitTxResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubmitTxResponse.Merge(m, src)
+func (m *ShareTxResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ShareTxResponse.Merge(m, src)
 }
-func (m *SubmitTxResponse) XXX_Size() int {
-	return xxx_messageInfo_SubmitTxResponse.Size(m)
+func (m *ShareTxResponse) XXX_Size() int {
+	return xxx_messageInfo_ShareTxResponse.Size(m)
 }
-func (m *SubmitTxResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubmitTxResponse.DiscardUnknown(m)
+func (m *ShareTxResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ShareTxResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SubmitTxResponse proto.InternalMessageInfo
+var xxx_messageInfo_ShareTxResponse proto.InternalMessageInfo
 
-func (m *SubmitTxResponse) GetOk() bool {
+func (m *ShareTxResponse) GetAccepted() bool {
 	if m != nil {
-		return m.Ok
+		return m.Accepted
 	}
 	return false
 }
 
 func init() {
+	proto.RegisterType((*Block)(nil), "blockchain.Block")
+	proto.RegisterType((*Chain)(nil), "blockchain.Chain")
+	proto.RegisterType((*NodeID)(nil), "blockchain.NodeID")
 	proto.RegisterType((*Tx)(nil), "blockchain.Tx")
-	proto.RegisterType((*PingRequest)(nil), "blockchain.PingRequest")
-	proto.RegisterType((*PingResponse)(nil), "blockchain.PingResponse")
-	proto.RegisterType((*SubmitTxRequest)(nil), "blockchain.SubmitTxRequest")
-	proto.RegisterType((*SubmitTxResponse)(nil), "blockchain.SubmitTxResponse")
+	proto.RegisterType((*DiscoverRequest)(nil), "blockchain.DiscoverRequest")
+	proto.RegisterType((*DiscoverResponse)(nil), "blockchain.DiscoverResponse")
+	proto.RegisterType((*ShareChainRequest)(nil), "blockchain.ShareChainRequest")
+	proto.RegisterType((*ShareChainResponse)(nil), "blockchain.ShareChainResponse")
+	proto.RegisterType((*ShareTxRequest)(nil), "blockchain.ShareTxRequest")
+	proto.RegisterType((*ShareTxResponse)(nil), "blockchain.ShareTxResponse")
 }
 
 func init() { proto.RegisterFile("proto/api.proto", fileDescriptor_ecf0878b123623e2) }
 
 var fileDescriptor_ecf0878b123623e2 = []byte{
-	// 298 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x91, 0x31, 0x6f, 0xc2, 0x30,
-	0x10, 0x85, 0x15, 0x03, 0x15, 0x3d, 0x2a, 0x40, 0x56, 0xa5, 0x46, 0x94, 0x56, 0x28, 0x13, 0x53,
-	0x22, 0x60, 0xea, 0x8a, 0xd4, 0x1d, 0xb9, 0x4c, 0xdd, 0x1c, 0x30, 0xc6, 0x22, 0xf1, 0xa5, 0xb1,
-	0x53, 0xe5, 0x57, 0xf4, 0x37, 0x57, 0x71, 0x80, 0x44, 0x2d, 0xdb, 0xe5, 0x7d, 0xef, 0x3d, 0xdf,
-	0x29, 0x30, 0xca, 0x72, 0xb4, 0x18, 0xf1, 0x4c, 0x85, 0x6e, 0xa2, 0x10, 0x27, 0xb8, 0x3b, 0xed,
-	0x8e, 0x5c, 0xe9, 0xc9, 0x54, 0x22, 0xca, 0x44, 0x54, 0x34, 0xe2, 0x5a, 0xa3, 0xe5, 0x56, 0xa1,
-	0x36, 0xb5, 0x33, 0xd8, 0x00, 0xd9, 0x96, 0xf4, 0x11, 0x7a, 0xdf, 0x3c, 0x29, 0x84, 0xef, 0xcd,
-	0xbc, 0xb9, 0xc7, 0xea, 0x0f, 0x3a, 0x86, 0xce, 0x01, 0x73, 0x9f, 0xcc, 0xbc, 0xf9, 0x3d, 0xab,
-	0x46, 0x4a, 0xa1, 0x7b, 0xc8, 0x31, 0xf5, 0x3b, 0x4e, 0x72, 0x33, 0x1d, 0x02, 0xb1, 0xe8, 0x77,
-	0x9d, 0x42, 0x2c, 0x06, 0x2f, 0x30, 0xd8, 0x28, 0x2d, 0x99, 0xf8, 0x2a, 0x84, 0xb1, 0x15, 0x56,
-	0x7b, 0xd7, 0xdb, 0x63, 0x44, 0xed, 0x83, 0x10, 0x1e, 0x6a, 0x6c, 0x32, 0xd4, 0x46, 0x54, 0x1c,
-	0x4f, 0x8e, 0xf7, 0x19, 0xc1, 0xd3, 0xd9, 0x4f, 0xae, 0xfe, 0x05, 0x8c, 0x3e, 0x8a, 0x38, 0x55,
-	0x76, 0x5b, 0x5e, 0x2a, 0x5f, 0x81, 0xd8, 0xd2, 0x45, 0x06, 0xcb, 0x61, 0xd8, 0x9c, 0x1a, 0x6e,
-	0x4b, 0x46, 0x6c, 0x19, 0x04, 0x30, 0x6e, 0x22, 0xb7, 0x9f, 0x59, 0xfe, 0x78, 0x00, 0xeb, 0x6b,
-	0x92, 0xbe, 0x41, 0xb7, 0xda, 0x8a, 0x3e, 0xb5, 0xeb, 0x5a, 0x67, 0x4c, 0xfc, 0xff, 0xe0, 0xdc,
-	0xfc, 0x0e, 0xfd, 0xcb, 0x6b, 0xf4, 0xb9, 0xed, 0xfa, 0xb3, 0xf6, 0x64, 0x7a, 0x1b, 0xd6, 0x35,
-	0xeb, 0xd5, 0xe7, 0x42, 0x2a, 0x7b, 0x2c, 0xe2, 0x70, 0x87, 0x69, 0xc4, 0x8d, 0xe4, 0x4a, 0x0b,
-	0x13, 0x35, 0x91, 0xc8, 0xfd, 0x30, 0x89, 0x2d, 0x29, 0xbe, 0x73, 0xda, 0xea, 0x37, 0x00, 0x00,
-	0xff, 0xff, 0x04, 0x54, 0x7b, 0x3d, 0x01, 0x02, 0x00, 0x00,
+	// 589 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0xc1, 0x6e, 0xd3, 0x40,
+	0x10, 0x95, 0xed, 0xd8, 0x4d, 0xa6, 0x52, 0xda, 0xae, 0x2a, 0x64, 0xb9, 0xa5, 0x44, 0xbe, 0x10,
+	0x90, 0x70, 0x4a, 0x7a, 0xe1, 0x4a, 0x29, 0x07, 0x84, 0x84, 0xd0, 0x92, 0x13, 0xb7, 0x8d, 0xbd,
+	0x75, 0xac, 0x34, 0xbb, 0xc6, 0xbb, 0x09, 0x46, 0x82, 0x3b, 0x5f, 0xc1, 0x7f, 0x71, 0xe1, 0x5b,
+	0x90, 0xc7, 0x5b, 0xdb, 0xa4, 0x45, 0x15, 0xe5, 0xb6, 0xf3, 0xde, 0xdb, 0x7d, 0x33, 0x6f, 0x9c,
+	0xc0, 0x5e, 0x5e, 0x48, 0x2d, 0x27, 0x2c, 0xcf, 0x22, 0x3c, 0x11, 0x98, 0x5f, 0xc9, 0x78, 0x19,
+	0x2f, 0x58, 0x26, 0x82, 0xe3, 0x54, 0xca, 0xf4, 0x8a, 0x57, 0xec, 0x84, 0x09, 0x21, 0x35, 0xd3,
+	0x99, 0x14, 0xaa, 0x56, 0x06, 0x8f, 0x0c, 0x8b, 0xd5, 0x7c, 0x7d, 0x39, 0xd1, 0xd9, 0x8a, 0x2b,
+	0xcd, 0x56, 0x79, 0x2d, 0x08, 0x7f, 0x5a, 0xe0, 0x9e, 0x57, 0xaf, 0x91, 0x17, 0x30, 0x68, 0x48,
+	0xdf, 0x1a, 0x59, 0xe3, 0xdd, 0x69, 0x10, 0xd5, 0xd7, 0xa3, 0xeb, 0xeb, 0xd1, 0xec, 0x5a, 0x41,
+	0x5b, 0x31, 0x21, 0xd0, 0x5b, 0x30, 0xb5, 0xf0, 0xed, 0x91, 0x35, 0xee, 0x51, 0x3c, 0x93, 0x00,
+	0xfa, 0x79, 0xc1, 0x37, 0x88, 0x3b, 0x88, 0x37, 0x35, 0x39, 0x04, 0x57, 0x48, 0x11, 0x73, 0xbf,
+	0x87, 0x44, 0x5d, 0x90, 0x07, 0xe0, 0x69, 0x56, 0xa4, 0x5c, 0xfb, 0x2e, 0xc2, 0xa6, 0xaa, 0xf0,
+	0x7c, 0x3d, 0x5f, 0xf2, 0x2f, 0xbe, 0x37, 0xb2, 0xc6, 0x03, 0x6a, 0x2a, 0x32, 0x02, 0x47, 0x97,
+	0xca, 0xdf, 0x19, 0x39, 0xe3, 0xdd, 0xe9, 0x30, 0x6a, 0x23, 0x89, 0x66, 0x25, 0xad, 0xa8, 0x70,
+	0x0a, 0xee, 0xab, 0x0a, 0x20, 0x4f, 0xc0, 0x43, 0x5a, 0xf9, 0x16, 0xaa, 0x0f, 0xba, 0x6a, 0x9c,
+	0x9e, 0x1a, 0x41, 0x78, 0x0a, 0xde, 0x3b, 0x99, 0xf0, 0x37, 0x17, 0x1d, 0x5f, 0xeb, 0x0f, 0xdf,
+	0x21, 0xd8, 0x59, 0x82, 0xb3, 0xba, 0xd4, 0xce, 0x92, 0xf0, 0x87, 0x05, 0xf6, 0xac, 0xfc, 0x8f,
+	0xf8, 0x0e, 0xc1, 0xdd, 0xb0, 0xab, 0x35, 0xc7, 0x37, 0x2d, 0x5a, 0x17, 0x64, 0x1f, 0x9c, 0x4b,
+	0x59, 0x60, 0x76, 0x03, 0x5a, 0x1d, 0xab, 0x98, 0x2f, 0x0b, 0xb9, 0xc2, 0xd4, 0x06, 0x14, 0xcf,
+	0x55, 0x33, 0x5a, 0x62, 0x60, 0x03, 0x6a, 0x6b, 0xd9, 0xac, 0xc2, 0x6b, 0x57, 0x11, 0x7e, 0x83,
+	0xbd, 0x8b, 0x4c, 0xc5, 0x72, 0xc3, 0x0b, 0xca, 0x3f, 0xad, 0xb9, 0xd2, 0xe4, 0x29, 0x78, 0x02,
+	0xa7, 0x34, 0x9d, 0x92, 0x6e, 0x20, 0xf5, 0xfc, 0xd4, 0x28, 0xc8, 0x09, 0x80, 0xe2, 0xc5, 0x86,
+	0x17, 0xef, 0x65, 0xa1, 0xcd, 0xdc, 0x1d, 0xa4, 0xe2, 0x97, 0x42, 0x7e, 0x16, 0x2f, 0x93, 0xa4,
+	0x50, 0xbe, 0x33, 0x72, 0xc6, 0x03, 0xda, 0x41, 0x42, 0x01, 0xfb, 0xad, 0xbd, 0xca, 0xa5, 0x50,
+	0xfc, 0x9f, 0xfc, 0x87, 0x60, 0xcb, 0x25, 0xfa, 0xf6, 0xa9, 0x2d, 0x97, 0x77, 0xfa, 0x7d, 0xb7,
+	0xe0, 0xe0, 0xc3, 0x82, 0x15, 0x1c, 0x77, 0x7f, 0x9f, 0x89, 0x1f, 0x83, 0x8b, 0x38, 0x9a, 0x6e,
+	0x7d, 0x2d, 0xf5, 0xa3, 0x35, 0xbf, 0x15, 0x8d, 0xb3, 0x1d, 0x4d, 0x78, 0x0a, 0xa4, 0xdb, 0x89,
+	0x19, 0x3e, 0x80, 0x3e, 0x8b, 0x63, 0x9e, 0x6b, 0x9e, 0x60, 0x33, 0x7d, 0xda, 0xd4, 0xe1, 0x57,
+	0x18, 0xe2, 0x8d, 0x59, 0x79, 0xbf, 0x55, 0xd9, 0xba, 0x34, 0x5d, 0x6f, 0xff, 0x22, 0x6c, 0x5d,
+	0xde, 0xd9, 0xef, 0x33, 0xd8, 0x6b, 0xdc, 0xef, 0x6e, 0x76, 0xfa, 0xcb, 0x82, 0x5e, 0xd5, 0x01,
+	0x79, 0x0d, 0xfd, 0xeb, 0x15, 0x93, 0xa3, 0xae, 0xef, 0xd6, 0x77, 0x17, 0x1c, 0xdf, 0x4e, 0x1a,
+	0xaf, 0xb7, 0x00, 0x6d, 0x5c, 0xe4, 0x61, 0x57, 0x7b, 0x63, 0xa1, 0xc1, 0xc9, 0xdf, 0x68, 0xf3,
+	0xd8, 0x39, 0xec, 0x98, 0x59, 0x48, 0x70, 0x43, 0xda, 0xc4, 0x1b, 0x1c, 0xdd, 0xca, 0xd5, 0x6f,
+	0x9c, 0x9f, 0x7d, 0x7c, 0x9e, 0x66, 0x7a, 0xb1, 0x9e, 0x47, 0xb1, 0x5c, 0x4d, 0x98, 0x4a, 0x59,
+	0x26, 0xb8, 0x9a, 0xb4, 0x37, 0xea, 0xff, 0xd5, 0x54, 0x76, 0xa0, 0xb9, 0x87, 0xd8, 0xd9, 0xef,
+	0x00, 0x00, 0x00, 0xff, 0xff, 0x96, 0xf8, 0x0a, 0xf8, 0xb6, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -293,108 +655,144 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// BlockchainClient is the client API for Blockchain service.
+// NodeClient is the client API for Node service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type BlockchainClient interface {
-	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
-	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
+type NodeClient interface {
+	Discover(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*DiscoverResponse, error)
+	ShareChain(ctx context.Context, in *ShareChainRequest, opts ...grpc.CallOption) (*ShareChainResponse, error)
+	ShareTx(ctx context.Context, in *ShareTxRequest, opts ...grpc.CallOption) (*ShareTxResponse, error)
 }
 
-type blockchainClient struct {
+type nodeClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewBlockchainClient(cc *grpc.ClientConn) BlockchainClient {
-	return &blockchainClient{cc}
+func NewNodeClient(cc *grpc.ClientConn) NodeClient {
+	return &nodeClient{cc}
 }
 
-func (c *blockchainClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
-	out := new(PingResponse)
-	err := c.cc.Invoke(ctx, "/blockchain.Blockchain/Ping", in, out, opts...)
+func (c *nodeClient) Discover(ctx context.Context, in *DiscoverRequest, opts ...grpc.CallOption) (*DiscoverResponse, error) {
+	out := new(DiscoverResponse)
+	err := c.cc.Invoke(ctx, "/blockchain.Node/Discover", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *blockchainClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error) {
-	out := new(SubmitTxResponse)
-	err := c.cc.Invoke(ctx, "/blockchain.Blockchain/SubmitTx", in, out, opts...)
+func (c *nodeClient) ShareChain(ctx context.Context, in *ShareChainRequest, opts ...grpc.CallOption) (*ShareChainResponse, error) {
+	out := new(ShareChainResponse)
+	err := c.cc.Invoke(ctx, "/blockchain.Node/ShareChain", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// BlockchainServer is the server API for Blockchain service.
-type BlockchainServer interface {
-	Ping(context.Context, *PingRequest) (*PingResponse, error)
-	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
+func (c *nodeClient) ShareTx(ctx context.Context, in *ShareTxRequest, opts ...grpc.CallOption) (*ShareTxResponse, error) {
+	out := new(ShareTxResponse)
+	err := c.cc.Invoke(ctx, "/blockchain.Node/ShareTx", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-// UnimplementedBlockchainServer can be embedded to have forward compatible implementations.
-type UnimplementedBlockchainServer struct {
+// NodeServer is the server API for Node service.
+type NodeServer interface {
+	Discover(context.Context, *DiscoverRequest) (*DiscoverResponse, error)
+	ShareChain(context.Context, *ShareChainRequest) (*ShareChainResponse, error)
+	ShareTx(context.Context, *ShareTxRequest) (*ShareTxResponse, error)
 }
 
-func (*UnimplementedBlockchainServer) Ping(ctx context.Context, req *PingRequest) (*PingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
-}
-func (*UnimplementedBlockchainServer) SubmitTx(ctx context.Context, req *SubmitTxRequest) (*SubmitTxResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitTx not implemented")
+// UnimplementedNodeServer can be embedded to have forward compatible implementations.
+type UnimplementedNodeServer struct {
 }
 
-func RegisterBlockchainServer(s *grpc.Server, srv BlockchainServer) {
-	s.RegisterService(&_Blockchain_serviceDesc, srv)
+func (*UnimplementedNodeServer) Discover(ctx context.Context, req *DiscoverRequest) (*DiscoverResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Discover not implemented")
+}
+func (*UnimplementedNodeServer) ShareChain(ctx context.Context, req *ShareChainRequest) (*ShareChainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShareChain not implemented")
+}
+func (*UnimplementedNodeServer) ShareTx(ctx context.Context, req *ShareTxRequest) (*ShareTxResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShareTx not implemented")
 }
 
-func _Blockchain_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PingRequest)
+func RegisterNodeServer(s *grpc.Server, srv NodeServer) {
+	s.RegisterService(&_Node_serviceDesc, srv)
+}
+
+func _Node_Discover_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DiscoverRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BlockchainServer).Ping(ctx, in)
+		return srv.(NodeServer).Discover(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blockchain.Blockchain/Ping",
+		FullMethod: "/blockchain.Node/Discover",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BlockchainServer).Ping(ctx, req.(*PingRequest))
+		return srv.(NodeServer).Discover(ctx, req.(*DiscoverRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Blockchain_SubmitTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubmitTxRequest)
+func _Node_ShareChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShareChainRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BlockchainServer).SubmitTx(ctx, in)
+		return srv.(NodeServer).ShareChain(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/blockchain.Blockchain/SubmitTx",
+		FullMethod: "/blockchain.Node/ShareChain",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BlockchainServer).SubmitTx(ctx, req.(*SubmitTxRequest))
+		return srv.(NodeServer).ShareChain(ctx, req.(*ShareChainRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Blockchain_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "blockchain.Blockchain",
-	HandlerType: (*BlockchainServer)(nil),
+func _Node_ShareTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShareTxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeServer).ShareTx(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/blockchain.Node/ShareTx",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeServer).ShareTx(ctx, req.(*ShareTxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _Node_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "blockchain.Node",
+	HandlerType: (*NodeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Ping",
-			Handler:    _Blockchain_Ping_Handler,
+			MethodName: "Discover",
+			Handler:    _Node_Discover_Handler,
 		},
 		{
-			MethodName: "SubmitTx",
-			Handler:    _Blockchain_SubmitTx_Handler,
+			MethodName: "ShareChain",
+			Handler:    _Node_ShareChain_Handler,
+		},
+		{
+			MethodName: "ShareTx",
+			Handler:    _Node_ShareTx_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

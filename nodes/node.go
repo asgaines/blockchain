@@ -2,303 +2,288 @@ package nodes
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
-	"math"
-	"math/rand"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/asgaines/blockchain/chain"
+	"github.com/asgaines/blockchain/dmaps"
+	"github.com/asgaines/blockchain/mining"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
-	"google.golang.org/grpc"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 )
 
-// BlockchainFile is a simple storage of the blockchain in a file
-const BlockchainFile = "storage.json"
-
-// InitialExpectedHashrate is a guess of how many hashes are possible per second.
-// It seeds the network for the first block, but replaced by real data once it
-// comes through.
+// InitialExpectedHashrate is the seed of how many hashes are possible per second.
+// The variable set by it is overridden by real data once it comes through.
 //
-// Do not set it unreasonably high, or the first block could never be solved.
-const InitialExpectedHashrate = float64(1_6) //00_000)
+// Setting it too high could lead to the genesis block solve taking a long time
+// before the difficulty is adjusted.
+const InitialExpectedHashrate = float64(100)
 
-// Node represents a blockchain client
+// Node represents a blockchain node; a peer within the network.
 // It preserves a copy of the blockchain, competes for new block additions by mining,
-// and verifies work of peer nodes
+// and verifies work of peer nodes.
 type Node interface {
 	Run(ctx context.Context)
-	Mine()
-	GetChain() chain.Chain
-	DiscoverPeers() []Peer
-	PropagateTransaction(tx *pb.Tx)
-	Close()
 
-	pb.BlockchainServer
+	pb.NodeServer
 }
 
-// NewNode instantiates a Node; a blockchain client
-func NewNode(id int32, ID string, targetDur time.Duration, recalcPeriod int) Node {
+// NewNode instantiates a Node; a blockchain client for mining
+// and propagating new blocks/transactions
+func NewNode(pubkey string, poolID int, minPeers int, maxPeers int, targetDur time.Duration, recalcPeriod int, serverPort int, speed mining.HashSpeed, ratesFileName string) Node {
 	n := node{
-		id:           id,
-		ID:           ID,
-		queue:        make([]*pb.Tx, 0),
+		pubkey:       pubkey,
+		poolID:       poolID,
+		peers:        make(map[NodeID]Peer),
+		knownAddrs:   dmaps.New(),
+		minPeers:     minPeers,
+		maxPeers:     maxPeers,
 		targetDur:    targetDur,
-		hashesPerSec: InitialExpectedHashrate,
-		startTime:    time.Now(),
 		recalcPeriod: recalcPeriod,
+		serverPort:   serverPort,
 	}
 
 	n.chain = n.initChain()
-	n.target = n.calcTarget()
-	n.peers = n.DiscoverPeers()
+
+	n.miner = mining.NewMiner(
+		(*chain.Block)(n.chain.Blocks[n.chain.Length()-1]),
+		pubkey,
+		InitialExpectedHashrate*targetDur.Seconds(),
+		targetDur,
+		speed,
+	)
+
+	n.appendAddrs(n.getSeedAddrs())
+
+	f, err := os.OpenFile(ratesFileName, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	n.ratesF = f
 
 	return &n
 }
 
 type node struct {
-	id           int32
-	ID           string
-	peers        []Peer
-	chain        chain.Chain
-	queue        []*pb.Tx
-	nonce        uint64
+	// pubkey is the public key for the node's miner.
+	// The rewards for mining a block by this node will be attributed to this
+	// public key. The miner can run multiple nodes with the same pubkey by
+	// modifying the poolID
+	pubkey string
+	// poolID allows a single pubkey to be used across multiple nodes. Each
+	// node within the single miner's pool should have a unique ID.
+	poolID       int
+	miner        mining.Miner
+	peers        map[NodeID]Peer
+	knownAddrs   dmaps.Dmap
+	minPeers     int
+	maxPeers     int
+	chain        *chain.Chain
 	startTime    time.Time
-	numHashes    uint64
-	hashesPerSec float64
-	target       uint64
 	targetDur    time.Duration
-	rates        []float64
 	recalcPeriod int
+	serverPort   int
+	ratesF       *os.File
 }
 
-func (n node) initChain() chain.Chain {
-	f, err := os.Open(n.getStorageFname())
-	if err != nil {
-		log.Println("Initializing node with new blockchain")
-		return chain.NewChain()
-	}
-	defer f.Close()
-
-	var bc chain.Chain
-
-	decoder := json.NewDecoder(f)
-	if err = decoder.Decode(&bc); err != nil {
-		log.Fatal(err)
-	}
-
-	if !bc.IsSolid() {
-		log.Fatalf("Initialization failed due to broken chain in storage file: %s", BlockchainFile)
-	}
-
-	log.Println("Initializing node with blockchain from storage")
-
-	return bc
+type nodeID struct {
+	pubkey string
+	id     int
 }
 
 func (n *node) Run(ctx context.Context) {
-	defer n.storeChain()
-	defer n.Close()
-	go n.Mine()
+	// defer func() {
+	// 	if err := n.storeChain(); err != nil {
+	// 		log.Println(err)
+	// 	}
+	// }()
+	defer n.close()
+
+	n.startTime = time.Now()
+
+	// go n.periodicDiscoverPeers(ctx)
+	go n.mine(ctx)
+
 	<-ctx.Done()
 }
 
-func (n *node) AddTxToQueue(tx *pb.Tx) {
-	log.Printf("Received new tx: %s", tx)
-	n.queue = append(n.queue, tx)
-	n.PropagateTransaction(tx)
-}
-
-func (n *node) Mine() {
-	for {
-		block := chain.NewBlock(
-			n.chain[len(n.chain)-1],
-			n.queue,
-			n.nonce,
-			n.target,
-			n.ID,
-		)
-
-		n.numHashes++
-
-		if solved := block.Hash <= n.target; solved {
-			log.Printf("%064b\n", block.Target)
-			log.Printf("%064b\n", block.Hash)
-
-			log.Printf("Took %v\n", n.chain.TimeSinceLastLink())
-
-			ave := time.Since(n.startTime).Seconds() / float64(len(n.chain))
-			log.Printf("Average %v seconds/block\n", ave)
-			n.rates = append(n.rates, ave)
-
-			log.Println()
-
-			chain := n.chain.AddBlock(block)
-			n.setChain(chain)
-		}
-
-		n.nonce++
-
-		// Use this to control the amount of hashes / CPU usage
-		time.Sleep(10 * time.Millisecond)
-	}
-}
-
-func (n *node) GetChain() chain.Chain {
-	return n.chain
-}
-
-func (n *node) setChain(chain chain.Chain) {
-	if chain.IsSolid() && len(chain) > len(n.chain) {
-		log.Printf("Overriding with new chain: %v\n", n.chain)
-
-		n.chain = chain
-
-		if len(chain)%n.recalcPeriod == 0 {
-			n.updateTarget()
-		}
-
-		// TODO: ensure ALL txs in queue are in new chain
-		// If not, keep orphans to queue
-		n.queue = make([]*pb.Tx, 0)
-
-		n.propagate()
-	} else {
-		log.Printf("%d: Not overriding\n", n.id)
-	}
-}
-
-func (n *node) DiscoverPeers() []Peer {
-	doors := []string{
-		"127.0.0.1:5050",
-		"127.0.0.1:5051",
-		"127.0.0.1:5052",
-		"127.0.0.1:5053",
-		"127.0.0.1:5054",
-		"127.0.0.1:5055",
-		"127.0.0.1:5056",
-		"127.0.0.1:5057",
-		"127.0.0.1:5058",
-		"127.0.0.1:5059",
-	}
-
-	ctx := context.Background()
-
-	peers := make([]Peer, 0)
-
-	var wg sync.WaitGroup
-	wg.Add(len(doors))
-
-	for _, door := range doors {
-		go func(door string) {
-			defer wg.Done()
-			conn, err := grpc.Dial(door, grpc.WithInsecure())
-			if err != nil {
-				log.Fatalf("could not dial: %s", err)
-			}
-
-			client := pb.NewBlockchainClient(conn)
-
-			resp, err := client.Ping(ctx, &pb.PingRequest{Id: n.id})
-			if err != nil {
-				return
-			}
-			if resp.GetOk() {
-				peers = append(peers, NewPeer(
-					resp.GetId(),
-					client,
-					conn,
-				))
-			}
-		}(door)
-	}
-
-	wg.Wait()
-
-	log.Printf("Discovered peers: %s\n", peers)
-
-	return peers
-}
-
-// updateTarget calculates a new mining target (block hash must be less than target
-// to be considered solved), and distributes it to the network
-func (n *node) updateTarget() {
-	n.UpdateHashrate()
-	n.target = n.calcTarget()
-}
-
-func (n node) PropagateTransaction(tx *pb.Tx) {
-	for _, p := range n.peers {
-		if err := p.SubmitTx(tx); err != nil {
-			log.Printf("could not propagate tx: %s\n", err)
-		}
-	}
-}
-
-func (n *node) UpdateHashrate() {
-	// This is overall average. Likely wanting a more instantaneous rate to
-	// respond to changes more rapidly
-	n.hashesPerSec = float64(n.numHashes) / time.Since(n.startTime).Seconds()
-}
-
-// calcTarget retrieves a target which must be greater than a hash value
-// for a block to be considered solved.
-// It is a determinant for how much work is expected for a
-// new block to be added to chain.
-func (n *node) calcTarget() uint64 {
-	// Lowest possible difficulty (highest possible target)
-	var difficulty1Target uint64 = 0xFF_FF_FF_FF_FF_FF_FF_FF
-
-	shifts := math.Log2(n.hashesPerSec * n.targetDur.Seconds())
-	target := difficulty1Target >> int(math.Round(shifts))
-
-	return target
-}
-
-func (n node) propagate() {
-	for _, p := range n.peers {
-		log.Printf("%d: Propagation to %d\n\n", n.id, p.GetID())
-		// TODO: propagate the chain across the network; claim your prize
-		// if err := p.SubmitChain(n.chain); err != nil {
-		// 	log.Println(err)
-		// }
-	}
-}
-
-func (n *node) storeChain() error {
-	f, err := os.OpenFile(n.getStorageFname(), os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := f.Write(n.chain.ToJSON()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (n node) randomPeer() Peer {
-	source := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(source)
-
-	return n.peers[r.Intn(len(n.peers))]
-}
-
-func (n *node) Close() {
+func (n *node) close() {
 	for _, peer := range n.peers {
 		if err := peer.Close(); err != nil {
 			log.Println(err)
 		}
 	}
 
-	log.Println("Shutting down node")
+	if err := n.ratesF.Close(); err != nil {
+		log.Println(err)
+	}
 }
 
-func (n *node) getStorageFname() string {
-	return fmt.Sprintf("%s_%s", n.ID, BlockchainFile)
+func (n node) propagateTx(tx *pb.Tx, except NodeID) {
+	for nodeID, p := range n.peers {
+		if nodeID != except {
+			if err := p.ShareTx(tx, n.getID(), int32(n.serverPort)); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+}
+
+func (n node) propagateChain() {
+	for nodeID, p := range n.peers {
+		log.Printf("Propagation to %v\n\n", nodeID)
+		if err := p.ShareChain(n.chain, n.getID(), int32(n.serverPort)); err != nil {
+			log.Println(err)
+			delete(n.peers, nodeID)
+		}
+	}
+}
+
+func (n *node) storeChain() error {
+	f, err := os.OpenFile(n.getStorageFnameProto(), os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	b, err := proto.Marshal(n.chain.ToProto())
+	if err != nil {
+		return fmt.Errorf("could not marshal chain: %w", err)
+	}
+
+	if _, err := f.Write(b); err != nil {
+		return fmt.Errorf("could not write to file: %w", err)
+	}
+
+	fj, err := os.OpenFile(n.getStorageFnameJSON(), os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := fj.Close(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	if err := new(jsonpb.Marshaler).Marshal(fj, n.chain.ToProto()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (n *node) getStorageFnameProto() string {
+	return fmt.Sprintf("%s.proto", n.pubkey)
+}
+
+func (n *node) getStorageFnameJSON() string {
+	return fmt.Sprintf("%s.json", n.pubkey)
+}
+
+type SubmitReport struct {
+	chain chain.Chain
+}
+
+func (n node) initChain() *chain.Chain {
+	b, err := ioutil.ReadFile(n.getStorageFnameProto())
+	if err != nil {
+		return chain.NewChain()
+	}
+
+	var bcpb pb.Chain
+
+	if err := proto.Unmarshal(b, &bcpb); err != nil {
+		log.Fatalf("could not unmarshal chain: %s", err)
+	}
+
+	bc := chain.Chain(bcpb)
+
+	if !bc.IsSolid() {
+		log.Fatalf("Initialization failed due to broken chain in storage file: %s", n.getStorageFnameProto())
+	}
+
+	return &bc
+}
+
+func (n *node) mergeSubmits(chans ...<-chan SubmitReport) <-chan SubmitReport {
+	submissions := make(chan SubmitReport)
+
+	go func() {
+		var wg sync.WaitGroup
+
+		wg.Add(len(chans))
+		for _, c := range chans {
+			go func(c <-chan SubmitReport) {
+				for submission := range c {
+					submissions <- submission
+				}
+				wg.Done()
+			}(c)
+		}
+
+		wg.Wait()
+		close(submissions)
+	}()
+
+	return submissions
+}
+
+func (n *node) getKnownAddrsExcept(except []string) []string {
+	knownAddrs := n.knownAddrs.ReadAll()
+	addrs := make([]string, 0, len(knownAddrs))
+
+	exceptions := make(map[string]bool, len(except))
+	for _, e := range except {
+		exceptions[e] = true
+	}
+
+	for _, addr := range knownAddrs {
+		if _, ok := exceptions[addr]; !ok {
+			addrs = append(addrs, addr)
+		}
+	}
+
+	return addrs
+}
+
+func (n *node) appendAddrs(addrs []string) {
+	newAddrs := make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		newAddrs = append(newAddrs, addr)
+	}
+
+	n.knownAddrs.WriteMany(newAddrs)
+}
+
+func (n *node) getSeedAddrs() []string {
+	var addrs []string
+
+	for addr := range n.getBootSeeds() {
+		addrs = append(addrs, addr)
+	}
+
+	extraAddrs := os.Getenv("BLOCKCHAIN_ADDRS")
+	for _, addr := range strings.Split(extraAddrs, ",") {
+		addrs = append(addrs, addr)
+	}
+
+	return addrs
+}
+
+func (n *node) getID() NodeID {
+	return NodeID{
+		Pubkey: n.pubkey,
+		Id:     int32(n.poolID),
+	}
 }

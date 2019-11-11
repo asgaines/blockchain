@@ -2,50 +2,73 @@ package nodes
 
 import (
 	"context"
-	"errors"
+	"log"
 
+	"github.com/asgaines/blockchain/chain"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
 	"google.golang.org/grpc"
 )
 
+// Peer manages a client connection to a Node running at a different address
 type Peer interface {
-	GetID() int32
-	SubmitTx(tx *pb.Tx) error
+	ShareChain(c *chain.Chain, nodeID NodeID, serverPort int32) error
+	ShareTx(tx *pb.Tx, nodeID NodeID, serverPort int32) error
+	GetServerAddr() string
 	Close() error
 }
 
-func NewPeer(id int32, client pb.BlockchainClient, conn *grpc.ClientConn) Peer {
+func NewPeer(ctx context.Context, serverAddr string, client pb.NodeClient, conn *grpc.ClientConn) Peer {
 	return &peer{
-		node: node{
-			id: id,
-		},
-		client: client,
-		conn:   conn,
+		ctx:        ctx,
+		serverAddr: serverAddr,
+		client:     client,
+		conn:       conn,
 	}
 }
 
 type peer struct {
-	node   node
-	client pb.BlockchainClient
-	conn   *grpc.ClientConn
+	ctx        context.Context
+	serverAddr string
+	client     pb.NodeClient
+	conn       *grpc.ClientConn
 }
 
-func (p *peer) GetID() int32 {
-	return p.node.id
-}
-
-func (p *peer) SubmitTx(tx *pb.Tx) error {
-	req := &pb.SubmitTxRequest{Tx: tx}
-	resp, err := p.client.SubmitTx(context.Background(), req)
+func (p *peer) ShareChain(c *chain.Chain, nodeID NodeID, serverPort int32) error {
+	resp, err := p.client.ShareChain(p.ctx, &pb.ShareChainRequest{
+		Chain:      c.ToProto(),
+		NodeID:     nodeID.ToProto(),
+		ServerPort: serverPort,
+	})
 	if err != nil {
 		return err
 	}
 
-	if !resp.GetOk() {
-		return errors.New("did not receive ok from peer")
+	if !resp.GetAccepted() {
+		log.Println("peer did not accept chain")
 	}
 
 	return nil
+}
+
+func (p *peer) ShareTx(tx *pb.Tx, nodeID NodeID, serverPort int32) error {
+	resp, err := p.client.ShareTx(p.ctx, &pb.ShareTxRequest{
+		Tx:         tx,
+		NodeID:     nodeID.ToProto(),
+		ServerPort: serverPort,
+	})
+	if err != nil {
+		return err
+	}
+
+	if !resp.GetAccepted() {
+		log.Println("peer did not accept tx")
+	}
+
+	return nil
+}
+
+func (p *peer) GetServerAddr() string {
+	return p.serverAddr
 }
 
 func (p *peer) Close() error {
