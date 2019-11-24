@@ -4,13 +4,18 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/asgaines/blockchain/protogo/blockchain"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
 )
 
-type Chain pb.Chain
+type Chain struct {
+	Pbc    *pb.Chain
+	hasher Hasher
+}
 
-func NewChain() *Chain {
+func NewChain(hasher Hasher) *Chain {
 	genesis := NewBlock(
+		hasher,
 		&Block{},
 		[]*pb.Tx{},
 		0,
@@ -19,36 +24,42 @@ func NewChain() *Chain {
 	)
 
 	chain := Chain{
-		Blocks: []*pb.Block{
-			genesis.ToProto(),
+		Pbc: &pb.Chain{
+			Blocks: []*pb.Block{
+				genesis.ToProto(),
+			},
 		},
+		hasher: hasher,
 	}
 
 	return &chain
 }
 
 func (bc *Chain) ToProto() *pb.Chain {
-	return (*pb.Chain)(bc)
+	return bc.Pbc
 }
 
-func (bc Chain) AddBlock(block *Block) *Chain {
-	bc.Blocks = append(bc.Blocks, block.ToProto())
-	return &bc
+func (bc Chain) WithBlock(block *Block) *Chain {
+	return &Chain{
+		Pbc: &blockchain.Chain{
+			Blocks: append(bc.Pbc.Blocks, block.ToProto()),
+		},
+	}
 }
 
-func (bc Chain) IsSolid() bool {
-	if len(bc.Blocks) <= 0 {
+func (bc Chain) IsSolid(hasher Hasher) bool {
+	if len(bc.Pbc.Blocks) <= 0 {
 		return false
 	}
 
-	for i, block := range bc.Blocks[1:] {
-		prev := bc.Blocks[i]
+	for i, block := range bc.Pbc.Blocks[1:] {
+		prev := bc.Pbc.Blocks[i]
 
-		prevhash := (*Block)(prev).makeHash()
+		prevhash := hasher.Hash((*Block)(prev))
 		if prevhash != block.Prevhash ||
 			prevhash != prev.Hash ||
-			block.Hash != (*Block)(block).makeHash() ||
-			block.Hash > block.Target {
+			block.Hash != hasher.Hash((*Block)(block)) ||
+			float64(block.Hash) > block.Target {
 			return false
 		}
 	}
@@ -57,15 +68,15 @@ func (bc Chain) IsSolid() bool {
 }
 
 func (bc Chain) BlockByIdx(idx int) *Block {
-	return (*Block)(bc.Blocks[idx])
+	return (*Block)(bc.Pbc.Blocks[idx])
 }
 
 func (bc Chain) LastLink() *Block {
-	return bc.BlockByIdx(len(bc.Blocks) - 1)
+	return bc.BlockByIdx(len(bc.Pbc.Blocks) - 1)
 }
 
 func (bc Chain) Length() int {
-	return len(bc.Blocks)
+	return len(bc.Pbc.Blocks)
 }
 
 func (bc Chain) ToJSON() []byte {

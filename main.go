@@ -14,11 +14,19 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/asgaines/blockchain/chain"
 	"github.com/asgaines/blockchain/mining"
 	"github.com/asgaines/blockchain/nodes"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
 	"google.golang.org/grpc"
 )
+
+// InitialExpectedHashrate is the seed of how many hashes are possible per second.
+// The variable set by it is overridden by real data once it comes through.
+//
+// Setting it too high could lead to the genesis block solve taking a long time
+// before the difficulty is adjusted.
+const InitialExpectedHashrate = float64(100)
 
 func main() {
 	var pubkey string
@@ -26,19 +34,19 @@ func main() {
 	var addr string
 	var minPeers int
 	var maxPeers int
-	var targetDur time.Duration
+	var targetDurPerBlock time.Duration
 	var recalcPeriod int
 	var speedArg string
-	var ratesFileName string
+	var filesPrefix string
 
 	flag.IntVar(&poolID, "poolid", 0, "The ID for a node within a single miner's pool (nodes with same pubkey).")
 	flag.StringVar(&addr, "addr", ":20403", "Address to listen on")
 	flag.IntVar(&minPeers, "minpeers", 5, "The minimum number of peers to aim for; any fewer will trigger a peer discovery event")
 	flag.IntVar(&maxPeers, "maxpeers", 25, "The maximum number of peers to seed out to")
-	flag.DurationVar(&targetDur, "targetdur", 10*time.Minute, "The desired amount of time between block mining events; controls the difficulty of the mining")
+	flag.DurationVar(&targetDurPerBlock, "targetdur", 10*time.Minute, "The desired amount of time between block mining events; controls the difficulty of the mining")
 	flag.IntVar(&recalcPeriod, "recalc", 2016, "How many blocks to solve before recalculating difficulty target")
 	flag.StringVar(&speedArg, "speed", "medium", "Speed of hashing, CPU usage. One of low/medium/high/ultra")
-	flag.StringVar(&ratesFileName, "ratesfile", "rates.txt", "Filename for rates output")
+	flag.StringVar(&filesPrefix, "filesprefix", "run", "Common prefix for all output files")
 
 	flag.Parse()
 
@@ -74,16 +82,36 @@ func main() {
 		log.Fatal(err)
 	}
 
+	hasher := chain.NewHasher()
+
+	c := chain.InitChain(hasher, filesPrefix)
+
+	difficulty := InitialExpectedHashrate * targetDurPerBlock.Seconds()
+
+	miner := mining.NewMiner(
+		(*chain.Block)(c.LastLink()),
+		pubkey,
+		difficulty,
+		targetDurPerBlock,
+		speed,
+		nodes.CalcTarget(difficulty),
+		hasher,
+	)
+
 	node := nodes.NewNode(
+		c,
+		miner,
 		pubkey,
 		poolID,
 		minPeers,
 		maxPeers,
-		targetDur,
+		targetDurPerBlock,
 		recalcPeriod,
 		portN,
 		speed,
-		ratesFileName,
+		filesPrefix,
+		difficulty,
+		hasher,
 	)
 	wg.Add(1)
 	go func() {

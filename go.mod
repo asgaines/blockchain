@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/fiorix/protoc-gen-cobra v0.0.0-20181029091941-dffa0bfa45cc
+	github.com/golang/mock v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/magiconair/properties v1.8.1 // indirect

@@ -12,7 +12,7 @@ message Block {
 	uint64 hash = 2;
 	uint64 prevhash = 3;
 	uint64 nonce = 4;
-	uint64 target = 5;
+	double target = 5;
 	string pubkey = 6;
 	repeated Tx txs = 7;
 }

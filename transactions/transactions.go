@@ -20,7 +20,7 @@ func SetHash(tx *pb.Tx) {
 	h.Write([]byte(concat))
 	hash := h.Sum(nil)
 
-	top8 := hash[0:8]
+	top8 := hash[:8]
 
 	tx.Hash = binary.BigEndian.Uint64(top8)
 }

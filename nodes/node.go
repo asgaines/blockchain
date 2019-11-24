@@ -3,7 +3,6 @@ package nodes
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -14,16 +13,7 @@ import (
 	"github.com/asgaines/blockchain/dmaps"
 	"github.com/asgaines/blockchain/mining"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 )
-
-// InitialExpectedHashrate is the seed of how many hashes are possible per second.
-// The variable set by it is overridden by real data once it comes through.
-//
-// Setting it too high could lead to the genesis block solve taking a long time
-// before the difficulty is adjusted.
-const InitialExpectedHashrate = float64(100)
 
 // Node represents a blockchain node; a peer within the network.
 // It preserves a copy of the blockchain, competes for new block additions by mining,
@@ -36,37 +26,32 @@ type Node interface {
 
 // NewNode instantiates a Node; a blockchain client for mining
 // and propagating new blocks/transactions
-func NewNode(pubkey string, poolID int, minPeers int, maxPeers int, targetDur time.Duration, recalcPeriod int, serverPort int, speed mining.HashSpeed, ratesFileName string) Node {
+func NewNode(c *chain.Chain, miner mining.Miner, pubkey string, poolID int, minPeers int, maxPeers int, targetDurPerBlock time.Duration, recalcPeriod int, serverPort int, speed mining.HashSpeed, filesPrefix string, difficulty float64, hasher chain.Hasher) Node {
 	n := node{
-		pubkey:       pubkey,
-		poolID:       poolID,
-		peers:        make(map[NodeID]Peer),
-		knownAddrs:   dmaps.New(),
-		minPeers:     minPeers,
-		maxPeers:     maxPeers,
-		targetDur:    targetDur,
-		recalcPeriod: recalcPeriod,
-		serverPort:   serverPort,
+		chain:             c,
+		miner:             miner,
+		pubkey:            pubkey,
+		poolID:            poolID,
+		peers:             make(map[NodeID]Peer),
+		knownAddrs:        dmaps.New(),
+		minPeers:          minPeers,
+		maxPeers:          maxPeers,
+		targetDurPerBlock: targetDurPerBlock,
+		recalcPeriod:      recalcPeriod,
+		serverPort:        serverPort,
+		filesPrefix:       filesPrefix,
+		difficulty:        difficulty,
+		hasher:            hasher,
 	}
 
-	n.chain = n.initChain()
+	// n.appendAddrs(n.getSeedAddrs())
 
-	n.miner = mining.NewMiner(
-		(*chain.Block)(n.chain.Blocks[n.chain.Length()-1]),
-		pubkey,
-		InitialExpectedHashrate*targetDur.Seconds(),
-		targetDur,
-		speed,
-	)
-
-	n.appendAddrs(n.getSeedAddrs())
-
-	f, err := os.OpenFile(ratesFileName, os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(filesPrefix+"_durs.txt", os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	n.ratesF = f
+	n.dursF = f
 
 	return &n
 }
@@ -79,18 +64,20 @@ type node struct {
 	pubkey string
 	// poolID allows a single pubkey to be used across multiple nodes. Each
 	// node within the single miner's pool should have a unique ID.
-	poolID       int
-	miner        mining.Miner
-	peers        map[NodeID]Peer
-	knownAddrs   dmaps.Dmap
-	minPeers     int
-	maxPeers     int
-	chain        *chain.Chain
-	startTime    time.Time
-	targetDur    time.Duration
-	recalcPeriod int
-	serverPort   int
-	ratesF       *os.File
+	poolID            int
+	miner             mining.Miner
+	peers             map[NodeID]Peer
+	knownAddrs        dmaps.Dmap
+	minPeers          int
+	maxPeers          int
+	chain             *chain.Chain
+	targetDurPerBlock time.Duration
+	recalcPeriod      int
+	serverPort        int
+	dursF             *os.File
+	filesPrefix       string
+	difficulty        float64
+	hasher            chain.Hasher
 }
 
 type nodeID struct {
@@ -99,14 +86,12 @@ type nodeID struct {
 }
 
 func (n *node) Run(ctx context.Context) {
-	// defer func() {
-	// 	if err := n.storeChain(); err != nil {
-	// 		log.Println(err)
-	// 	}
-	// }()
+	defer func() {
+		if err := chain.StoreChain(n.chain, n.filesPrefix); err != nil {
+			log.Println(err)
+		}
+	}()
 	defer n.close()
-
-	n.startTime = time.Now()
 
 	// go n.periodicDiscoverPeers(ctx)
 	go n.mine(ctx)
@@ -121,7 +106,7 @@ func (n *node) close() {
 		}
 	}
 
-	if err := n.ratesF.Close(); err != nil {
+	if err := n.dursF.Close(); err != nil {
 		log.Println(err)
 	}
 }
@@ -146,74 +131,16 @@ func (n node) propagateChain() {
 	}
 }
 
-func (n *node) storeChain() error {
-	f, err := os.OpenFile(n.getStorageFnameProto(), os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	b, err := proto.Marshal(n.chain.ToProto())
-	if err != nil {
-		return fmt.Errorf("could not marshal chain: %w", err)
-	}
-
-	if _, err := f.Write(b); err != nil {
-		return fmt.Errorf("could not write to file: %w", err)
-	}
-
-	fj, err := os.OpenFile(n.getStorageFnameJSON(), os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := fj.Close(); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	if err := new(jsonpb.Marshaler).Marshal(fj, n.chain.ToProto()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (n *node) getStorageFnameProto() string {
-	return fmt.Sprintf("%s.proto", n.pubkey)
+	return fmt.Sprintf("%s.proto", n.filesPrefix)
 }
 
 func (n *node) getStorageFnameJSON() string {
-	return fmt.Sprintf("%s.json", n.pubkey)
+	return fmt.Sprintf("%s.json", n.filesPrefix)
 }
 
 type SubmitReport struct {
 	chain chain.Chain
-}
-
-func (n node) initChain() *chain.Chain {
-	b, err := ioutil.ReadFile(n.getStorageFnameProto())
-	if err != nil {
-		return chain.NewChain()
-	}
-
-	var bcpb pb.Chain
-
-	if err := proto.Unmarshal(b, &bcpb); err != nil {
-		log.Fatalf("could not unmarshal chain: %s", err)
-	}
-
-	bc := chain.Chain(bcpb)
-
-	if !bc.IsSolid() {
-		log.Fatalf("Initialization failed due to broken chain in storage file: %s", n.getStorageFnameProto())
-	}
-
-	return &bc
 }
 
 func (n *node) mergeSubmits(chans ...<-chan SubmitReport) <-chan SubmitReport {

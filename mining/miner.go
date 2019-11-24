@@ -11,42 +11,46 @@ import (
 
 // MaxTarget is the highest possible target value (lowest possible difficulty)
 // As difficulty increases, target decreases.
-const MaxTarget uint64 = 0xFF_FF_FF_FF_FF_FF_FF_FF
+// const MaxTarget float64 = 0xFF_FF_FF_FF_FF_FF_FF_FF
 
+//go:generate mockgen -destination=./mocks/miner_mock.go -package=mocks github.com/asgaines/blockchain/mining Miner
 type Miner interface {
 	Mine(ctx context.Context, mineshaft chan<- *chain.Block)
 	AddTx(tx *pb.Tx)
-	RecalcTarget(actualDur time.Duration)
 	ClearTxs()
+	SetTarget(target float64)
 }
 
-func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed) Miner {
+func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed, target float64, hasher chain.Hasher) Miner {
 	m := miner{
-		prevBlock:         prevBlock,
-		pubkey:            pubkey,
-		difficulty:        difficulty,
-		targetDurPerBlock: targetDurPerBlock,
-		hashSpeed:         hashSpeed,
+		prevBlock: prevBlock,
+		pubkey:    pubkey,
+		// difficulty:        difficulty,
+		// targetDurPerBlock: targetDurPerBlock,
+		hashSpeed: hashSpeed,
+		target:    target,
+		hasher:    hasher,
 	}
 
-	m.target = m.calcTarget(difficulty)
+	// m.target = m.calcTarget(difficulty)
 
 	return &m
 }
 
 type miner struct {
-	prevBlock         *chain.Block
-	pubkey            string
-	target            uint64
-	targetDurPerBlock time.Duration
-	nonce             uint64
-	hashSpeed         HashSpeed
-	txpool            []*pb.Tx
-	difficulty        float64
+	prevBlock *chain.Block
+	pubkey    string
+	target    float64
+	// targetDurPerBlock time.Duration
+	nonce     uint64
+	hashSpeed HashSpeed
+	txpool    []*pb.Tx
+	hasher    chain.Hasher
+	// difficulty        float64
 }
 
-func (m *miner) Mine(ctx context.Context, mineshaft chan<- *chain.Block) {
-	log.Printf("%064b (target)\n", m.target)
+func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {
+	log.Printf("%f (target)", m.target)
 
 	for {
 		select {
@@ -55,17 +59,18 @@ func (m *miner) Mine(ctx context.Context, mineshaft chan<- *chain.Block) {
 		default:
 		}
 
-		switch m.hashSpeed {
-		case LowSpeed:
-			time.Sleep(100 * time.Millisecond)
-		case MediumSpeed:
-			time.Sleep(10 * time.Millisecond)
-		case HighSpeed:
-			time.Sleep(1 * time.Millisecond)
-		case UltraSpeed:
-		}
+		// switch m.hashSpeed {
+		// case LowSpeed:
+		// 	time.Sleep(100 * time.Millisecond)
+		// case MediumSpeed:
+		// 	time.Sleep(10 * time.Millisecond)
+		// case HighSpeed:
+		// 	time.Sleep(1 * time.Millisecond)
+		// case UltraSpeed:
+		// }
 
 		blockCandidate := chain.NewBlock(
+			m.hasher,
 			m.prevBlock,
 			m.txpool,
 			m.nonce,
@@ -73,12 +78,12 @@ func (m *miner) Mine(ctx context.Context, mineshaft chan<- *chain.Block) {
 			m.pubkey,
 		)
 
-		m.nonce++
-
-		if solved := blockCandidate.Hash <= m.target; solved {
-			mineshaft <- blockCandidate
+		if solved := float64(blockCandidate.Hash) <= m.target; solved {
+			conveyor <- blockCandidate
 			m.prevBlock = blockCandidate
 			m.nonce = 0
+		} else {
+			m.nonce++
 		}
 	}
 }
@@ -93,23 +98,6 @@ func (m *miner) ClearTxs() {
 	m.txpool = []*pb.Tx{}
 }
 
-func (m *miner) RecalcTarget(actualAvgDur time.Duration) {
-	newDifficulty := m.calcDifficulty(actualAvgDur, m.difficulty)
-	// log.Printf("%v (new difficulty)", newDifficulty)
-	m.difficulty = newDifficulty
-
-	m.target = m.calcTarget(newDifficulty)
-	// log.Println()
-	// log.Printf("%064b (new target)\n", m.target)
-}
-
-func (m *miner) calcDifficulty(actualDurPerBlock time.Duration, currDifficulty float64) float64 {
-	// log.Printf("actual dur per block: %v", actualDurPerBlock)
-	adjustment := float64(m.targetDurPerBlock) / float64(actualDurPerBlock)
-	// log.Printf("%v (adjustment)", adjustment)
-	return currDifficulty * adjustment
-}
-
-func (m *miner) calcTarget(difficulty float64) uint64 {
-	return uint64(float64(MaxTarget) / difficulty)
+func (m *miner) SetTarget(target float64) {
+	m.target = target
 }

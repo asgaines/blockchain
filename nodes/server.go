@@ -27,7 +27,9 @@ func (n *node) Discover(ctx context.Context, r *pb.DiscoverRequest) (*pb.Discove
 }
 
 func (n *node) ShareChain(ctx context.Context, r *pb.ShareChainRequest) (*pb.ShareChainResponse, error) {
-	accepted := n.setChain((*chain.Chain)(r.Chain))
+	accepted := n.setChain(&chain.Chain{
+		Pbc: r.Chain,
+	}, false)
 	//log.Printf("Did I accept peer chain? %v\n", accepted)
 	return &pb.ShareChainResponse{Accepted: accepted}, nil
 }
