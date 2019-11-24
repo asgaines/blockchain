@@ -87,7 +87,7 @@ type nodeID struct {
 
 func (n *node) Run(ctx context.Context) {
 	defer func() {
-		if err := chain.StoreChain(n.chain, n.filesPrefix); err != nil {
+		if err := n.chain.Store(n.filesPrefix); err != nil {
 			log.Println(err)
 		}
 	}()

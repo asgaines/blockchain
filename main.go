@@ -113,6 +113,7 @@ func main() {
 		difficulty,
 		hasher,
 	)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

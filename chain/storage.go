@@ -34,7 +34,7 @@ func InitChain(hasher Hasher, filesPrefix string) *Chain {
 	return &bc
 }
 
-func StoreChain(c *Chain, filesPrefix string) error {
+func (c *Chain) Store(filesPrefix string) error {
 	f, err := os.OpenFile(getStorageFnameProto(filesPrefix), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
