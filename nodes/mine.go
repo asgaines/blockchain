@@ -11,10 +11,6 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
-// MaxTarget is the highest possible target value (lowest possible difficulty)
-// As difficulty increases, target decreases.
-const MaxTarget float64 = 0xFF_FF_FF_FF_FF_FF_FF_FF
-
 func (n *node) mine(ctx context.Context) {
 	conveyor := make(chan *chain.Block)
 
@@ -53,8 +49,8 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 				log.Println(err)
 			}
 
-			target := n.recalcTarget(actualAvgBlockDur)
-			n.miner.SetTarget(target)
+			difficulty := n.calcDifficulty(actualAvgBlockDur, n.difficulty)
+			n.miner.SetTarget(difficulty)
 		}
 
 		n.miner.ClearTxs()
@@ -100,23 +96,16 @@ func (n *node) getRangeAvgBlockDur(c *chain.Chain, recalcPeriod int) (time.Durat
 	return actualRangeDur / time.Duration(recalcPeriod), nil
 }
 
-func (n *node) recalcTarget(actualAvgDur time.Duration) float64 {
-	newDifficulty := n.calcDifficulty(actualAvgDur, n.difficulty)
-	// log.Printf("%v (new difficulty)", newDifficulty)
-	n.difficulty = newDifficulty
-
-	return math.Min(CalcTarget(newDifficulty), MaxTarget)
-	// log.Println()
-	// log.Printf("%064b (new target)\n", m.target)
-}
-
 func (n *node) calcDifficulty(actualDurPerBlock time.Duration, currDifficulty float64) float64 {
 	// log.Printf("actual dur per block: %v", actualDurPerBlock)
 	adjustment := float64(n.targetDurPerBlock) / float64(actualDurPerBlock)
 	adjustment = n.confine(adjustment)
 
 	// log.Printf("%v (adjustment)", adjustment)
-	return currDifficulty * adjustment
+	newDifficulty := currDifficulty * adjustment
+
+	n.difficulty = newDifficulty
+	return newDifficulty
 }
 
 // confine restricts the difficulty adjustment shift to a factor of +/-4 to protect against anomalous fluctuations
@@ -125,8 +114,4 @@ func (n *node) confine(adjustment float64) float64 {
 	confined = math.Min(4, confined)
 
 	return confined
-}
-
-func CalcTarget(difficulty float64) float64 {
-	return float64(MaxTarget) / difficulty
 }

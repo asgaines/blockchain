@@ -204,3 +204,39 @@ func TestMine(t *testing.T) {
 		})
 	}
 }
+
+func TestSetTarget(t *testing.T) {
+	cases := []struct {
+		name       string
+		difficulty float64
+		expected   float64
+	}{
+		{
+			name:       "Target is maximum (easiest) if difficulty is minimum",
+			difficulty: 1,
+			expected:   MaxTarget,
+		},
+		{
+			name:       "Target is maximum (easiest) if difficulty is less than 1: edge case, since minimum difficulty is 1",
+			difficulty: 0.1,
+			expected:   MaxTarget,
+		},
+		{
+			name:       "Target is 1/100th of total range for a difficulty of 100",
+			difficulty: 100,
+			expected:   MaxTarget / 100,
+		},
+	}
+
+	m := miner{}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m.SetTarget(c.difficulty)
+
+			if m.target != c.expected {
+				t.Errorf("expected %v, got %v", c.expected, m.target)
+			}
+		})
+	}
+}

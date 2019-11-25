@@ -3,6 +3,7 @@ package mining
 import (
 	"context"
 	"log"
+	"math"
 	"time"
 
 	"github.com/asgaines/blockchain/chain"
@@ -11,28 +12,29 @@ import (
 
 // MaxTarget is the highest possible target value (lowest possible difficulty)
 // As difficulty increases, target decreases.
-// const MaxTarget float64 = 0xFF_FF_FF_FF_FF_FF_FF_FF
+const MaxTarget float64 = 0xFF_FF_FF_FF_FF_FF_FF_FF
 
 //go:generate mockgen -destination=./mocks/miner_mock.go -package=mocks github.com/asgaines/blockchain/mining Miner
 type Miner interface {
 	Mine(ctx context.Context, mineshaft chan<- *chain.Block)
 	AddTx(tx *pb.Tx)
 	SetPrevBlock(block *chain.Block)
-	SetTarget(target float64)
+	SetTarget(difficulty float64)
 	ClearTxs()
 }
 
-func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed, target float64, hasher chain.Hasher) Miner {
+// NewMiner returns an implementation of Miner, ready to begin mining
+func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed, hasher chain.Hasher) Miner {
 	m := miner{
 		prevBlock: prevBlock,
 		pubkey:    pubkey,
 		// difficulty:        difficulty,
 		// targetDurPerBlock: targetDurPerBlock,
 		hashSpeed: hashSpeed,
-		target:    target,
 		hasher:    hasher,
 	}
 
+	m.SetTarget(difficulty)
 	// m.target = m.calcTarget(difficulty)
 
 	return &m
@@ -94,8 +96,9 @@ func (m *miner) SetPrevBlock(block *chain.Block) {
 	m.prevBlock = block
 }
 
-func (m *miner) SetTarget(target float64) {
-	m.target = target
+func (m *miner) SetTarget(difficulty float64) {
+	target := float64(MaxTarget) / difficulty
+	m.target = math.Min(target, MaxTarget)
 }
 
 func (m *miner) AddTx(tx *pb.Tx) {

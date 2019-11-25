@@ -13,6 +13,115 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
+func TestMine(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockMiner := mm.NewMockMiner(ctrl)
+
+	type mockCalls struct {
+		mine struct {
+			blocks []*chain.Block
+			times  int
+		}
+		setTarget struct {
+			difficulty float64
+			times      int
+		}
+		clearTxs struct {
+			times int
+		}
+	}
+
+	type expected struct {
+		difficulty float64
+	}
+
+	cases := []struct {
+		name      string
+		node      *node
+		mockCalls mockCalls
+		expected  expected
+	}{
+		{
+			name: "Mining a single block with exact desired duration has no effect on difficulty",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Second,
+				recalcPeriod:      1,
+				difficulty:        1,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+					times  int
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 100,
+							},
+						},
+					},
+					times: 1,
+				},
+				setTarget: struct {
+					difficulty float64
+					times      int
+				}{
+					difficulty: 1,
+					times:      1,
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 1,
+				},
+			},
+			expected: expected{
+				difficulty: 1,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+			mockMiner.EXPECT().Mine(gomock.Any(), gomock.Any()).
+				Do(func(ctx context.Context, conveyor chan<- *chain.Block) {
+					defer cancel()
+
+					for _, block := range c.mockCalls.mine.blocks {
+						conveyor <- block
+					}
+
+					close(conveyor)
+				}).Times(c.mockCalls.mine.times)
+			mockMiner.EXPECT().SetTarget(c.mockCalls.setTarget.difficulty).Times(c.mockCalls.setTarget.times)
+			mockMiner.EXPECT().ClearTxs().Times(c.mockCalls.clearTxs.times)
+
+			c.node.miner = mockMiner
+
+			c.node.mine(ctx)
+
+			if c.node.difficulty != c.expected.difficulty {
+				t.Errorf("expected %v got %v", c.expected.difficulty, c.node.difficulty)
+			}
+		})
+	}
+}
+
 func TestGetDifficulty(t *testing.T) {
 	cases := []struct {
 		name           string
@@ -83,171 +192,6 @@ func TestGetDifficulty(t *testing.T) {
 
 			if got != c.expected {
 				t.Errorf("expected %v, got %v", c.expected, got)
-			}
-		})
-	}
-}
-
-func TestRecalcTarget(t *testing.T) {
-	cases := []struct {
-		name         string
-		node         node
-		actualAvgDur time.Duration
-		expected     float64
-	}{
-		{
-			name: "Target is maximum (easiest) if difficulty was minimum and desired duration hit exactly",
-			node: node{
-				targetDurPerBlock: 10 * time.Minute,
-				difficulty:        1,
-			},
-			actualAvgDur: 10 * time.Minute,
-			expected:     MaxTarget,
-		},
-		{
-			name: "Target is maximum (easiest) even if actual block solve time is slower than desired for a formerly minimum difficulty",
-			node: node{
-				targetDurPerBlock: 10 * time.Minute,
-				difficulty:        1,
-			},
-			actualAvgDur: 11 * time.Minute,
-			expected:     MaxTarget,
-		},
-		{
-			name: "Target is half of range when difficulty doubled from 1 -> 2",
-			node: node{
-				targetDurPerBlock: 10 * time.Minute,
-				difficulty:        1,
-			},
-			actualAvgDur: 5 * time.Minute,
-			expected:     MaxTarget / 2,
-		},
-		{
-			name: "Target is 1/8 of range when difficulty moves from 2 -> 8",
-			node: node{
-				targetDurPerBlock: 10 * time.Minute,
-				difficulty:        2,
-			},
-			actualAvgDur: 2*time.Minute + 30*time.Second,
-			expected:     MaxTarget / 8,
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got := c.node.recalcTarget(c.actualAvgDur)
-
-			if got != c.expected {
-				t.Errorf("expected %v, got %v", c.expected, got)
-			}
-		})
-	}
-}
-
-func TestMine(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockMiner := mm.NewMockMiner(ctrl)
-
-	type mockCalls struct {
-		mine struct {
-			blocks []*chain.Block
-			times  int
-		}
-		setTarget struct {
-			target float64
-			times  int
-		}
-		clearTxs struct {
-			times int
-		}
-	}
-
-	type expected struct {
-		difficulty float64
-	}
-
-	cases := []struct {
-		name      string
-		node      *node
-		mockCalls mockCalls
-		expected  expected
-	}{
-		{
-			name: "Mining a single block with exact desired duration has no effect on difficulty",
-			node: &node{
-				chain: &chain.Chain{
-					Pbc: &blockchain.Chain{
-						Blocks: []*pb.Block{
-							&pb.Block{
-								Timestamp: &timestamp.Timestamp{
-									Seconds: 0,
-								},
-							},
-						},
-					},
-				},
-				targetDurPerBlock: 100 * time.Second,
-				recalcPeriod:      1,
-				difficulty:        1,
-			},
-			mockCalls: mockCalls{
-				mine: struct {
-					blocks []*chain.Block
-					times  int
-				}{
-					blocks: []*chain.Block{
-						&chain.Block{
-							Timestamp: &timestamp.Timestamp{
-								Seconds: 100,
-							},
-						},
-					},
-					times: 1,
-				},
-				setTarget: struct {
-					target float64
-					times  int
-				}{
-					target: MaxTarget,
-					times:  1,
-				},
-				clearTxs: struct {
-					times int
-				}{
-					times: 1,
-				},
-			},
-			expected: expected{
-				difficulty: 1,
-			},
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
-			mockMiner.EXPECT().Mine(gomock.Any(), gomock.Any()).
-				Do(func(ctx context.Context, conveyor chan<- *chain.Block) {
-					defer cancel()
-
-					for _, block := range c.mockCalls.mine.blocks {
-						conveyor <- block
-					}
-
-					close(conveyor)
-				}).Times(c.mockCalls.mine.times)
-			mockMiner.EXPECT().SetTarget(c.mockCalls.setTarget.target).Times(c.mockCalls.setTarget.times)
-			mockMiner.EXPECT().ClearTxs().Times(c.mockCalls.clearTxs.times)
-
-			c.node.miner = mockMiner
-
-			c.node.mine(ctx)
-
-			if c.node.difficulty != c.expected.difficulty {
-				t.Errorf("expected %v got %v", c.expected.difficulty, c.node.difficulty)
 			}
 		})
 	}

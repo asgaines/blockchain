@@ -94,7 +94,6 @@ func main() {
 		difficulty,
 		targetDurPerBlock,
 		speed,
-		nodes.CalcTarget(difficulty),
 		hasher,
 	)
 
