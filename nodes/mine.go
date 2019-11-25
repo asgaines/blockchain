@@ -45,7 +45,7 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 	if (trusted || chain.IsSolid()) && chain.Length() > n.chain.Length() {
 		n.chain = chain
 
-		// n.logBlock(chain.LastLink())
+		n.logBlock(chain.LastLink())
 
 		if (chain.Length()-1)%n.recalcPeriod == 0 {
 			actualAvgBlockDur, err := n.getRangeAvgBlockDur(n.chain, n.recalcPeriod)
@@ -113,8 +113,18 @@ func (n *node) recalcTarget(actualAvgDur time.Duration) float64 {
 func (n *node) calcDifficulty(actualDurPerBlock time.Duration, currDifficulty float64) float64 {
 	// log.Printf("actual dur per block: %v", actualDurPerBlock)
 	adjustment := float64(n.targetDurPerBlock) / float64(actualDurPerBlock)
+	adjustment = n.confine(adjustment)
+
 	// log.Printf("%v (adjustment)", adjustment)
 	return currDifficulty * adjustment
+}
+
+// confine restricts the difficulty adjustment shift to a factor of +/-4 to protect against anomalous fluctuations
+func (n *node) confine(adjustment float64) float64 {
+	confined := math.Max(0.25, adjustment)
+	confined = math.Min(4, confined)
+
+	return confined
 }
 
 func CalcTarget(difficulty float64) float64 {

@@ -21,7 +21,6 @@ func TestMine(t *testing.T) {
 	}
 
 	type mockHashCall struct {
-		in    *chain.Block
 		out   uint64
 		times int
 	}
@@ -77,6 +76,30 @@ func TestMine(t *testing.T) {
 			},
 		},
 		{
+			name: "Lucky first hash, no luck afterwards",
+			minerSetup: minerSetup{
+				prevBlock: &chain.Block{},
+				target:    1000,
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					out:   999,
+					times: 1,
+				},
+				{
+					out:   712401678015,
+					times: 1,
+				},
+				{
+					out:   1001,
+					times: 1,
+				},
+			},
+			expected: expected{
+				numSolves: 1,
+			},
+		},
+		{
 			name: "5 unsuccessful hashes yield no solves",
 			minerSetup: minerSetup{
 				prevBlock: &chain.Block{},
@@ -95,9 +118,49 @@ func TestMine(t *testing.T) {
 					out:   1001,
 					times: 1,
 				},
+				{
+					out:   1002,
+					times: 1,
+				},
+				{
+					out:   1003,
+					times: 1,
+				},
 			},
 			expected: expected{
 				numSolves: 0,
+			},
+		},
+		{
+			name: "5 successful hashes yields 5 solves",
+			minerSetup: minerSetup{
+				prevBlock: &chain.Block{},
+				target:    1000,
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					out:   1000,
+					times: 1,
+				},
+				{
+					out:   999,
+					times: 1,
+				},
+				{
+					out:   0,
+					times: 1,
+				},
+				{
+					out:   5,
+					times: 1,
+				},
+				{
+					out:   25,
+					times: 1,
+				},
+			},
+			expected: expected{
+				numSolves: 5,
 			},
 		},
 	}
@@ -125,7 +188,6 @@ func TestMine(t *testing.T) {
 			m := &miner{
 				prevBlock: c.minerSetup.prevBlock,
 				target:    c.minerSetup.target,
-				nonce:     0,
 				hasher:    mockHasher,
 			}
 

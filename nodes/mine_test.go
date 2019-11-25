@@ -57,6 +57,24 @@ func TestGetDifficulty(t *testing.T) {
 			currDifficulty: 1024,
 			expected:       1024 / 1.5,
 		},
+		{
+			name: "An actual duration 10 times of expected returns a difficulty confined to 1/4 the previous amount, even though the calculation would be 1/10",
+			node: node{
+				targetDurPerBlock: 10 * time.Minute,
+			},
+			actualDur:      100 * time.Minute,
+			currDifficulty: 1024,
+			expected:       1024 / 4,
+		},
+		{
+			name: "An actual duration 1/10 of expected returns a difficulty confined to 4 times the previous amount, even though the calculation would be x10",
+			node: node{
+				targetDurPerBlock: 10 * time.Minute,
+			},
+			actualDur:      1 * time.Minute,
+			currDifficulty: 1024,
+			expected:       1024 * 4,
+		},
 	}
 
 	for _, c := range cases {

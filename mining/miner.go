@@ -90,16 +90,16 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {
 	}
 }
 
-func (m *miner) AddTx(tx *pb.Tx) {
-	m.txpool = append(m.txpool, tx)
-}
-
 func (m *miner) SetPrevBlock(block *chain.Block) {
 	m.prevBlock = block
 }
 
 func (m *miner) SetTarget(target float64) {
 	m.target = target
+}
+
+func (m *miner) AddTx(tx *pb.Tx) {
+	m.txpool = append(m.txpool, tx)
 }
 
 func (m *miner) ClearTxs() {
