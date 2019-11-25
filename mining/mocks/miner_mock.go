@@ -71,6 +71,18 @@ func (mr *MockMinerMockRecorder) Mine(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Mine", reflect.TypeOf((*MockMiner)(nil).Mine), arg0, arg1)
 }
 
+// SetPrevBlock mocks base method
+func (m *MockMiner) SetPrevBlock(arg0 *chain.Block) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetPrevBlock", arg0)
+}
+
+// SetPrevBlock indicates an expected call of SetPrevBlock
+func (mr *MockMinerMockRecorder) SetPrevBlock(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPrevBlock", reflect.TypeOf((*MockMiner)(nil).SetPrevBlock), arg0)
+}
+
 // SetTarget mocks base method
 func (m *MockMiner) SetTarget(arg0 float64) {
 	m.ctrl.T.Helper()

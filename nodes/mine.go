@@ -20,16 +20,10 @@ func (n *node) mine(ctx context.Context) {
 
 	go n.miner.Mine(ctx, conveyor)
 
-	for {
-		select {
-		case minedBlock := <-conveyor:
-			log.Printf("%#v", minedBlock)
-			chain := n.chain.WithBlock(minedBlock)
-			if overridden := n.setChain(chain, true); !overridden {
-				log.Fatal("solving a block did not successfully lead to chain override")
-			}
-		case <-ctx.Done():
-			return
+	for minedBlock := range conveyor {
+		chain := n.chain.WithBlock(minedBlock)
+		if overridden := n.setChain(chain, true); !overridden {
+			log.Fatal("solving a block did not successfully lead to chain override")
 		}
 	}
 }
@@ -44,14 +38,14 @@ func (n *node) logBlock(block *chain.Block) {
 		log.Printf("could not write to file: %s", err)
 	}
 
-	// log.Printf("%064b (%vs)\n", block.Hash, lastLinkDur.Seconds())
+	log.Printf("%064b (%vs)\n", block.Hash, lastLinkDur.Seconds())
 }
 
 func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
-	if (trusted || chain.IsSolid(n.hasher)) && chain.Length() > n.chain.Length() {
+	if (trusted || chain.IsSolid()) && chain.Length() > n.chain.Length() {
 		n.chain = chain
 
-		n.logBlock(chain.LastLink())
+		// n.logBlock(chain.LastLink())
 
 		if (chain.Length()-1)%n.recalcPeriod == 0 {
 			actualAvgBlockDur, err := n.getRangeAvgBlockDur(n.chain, n.recalcPeriod)

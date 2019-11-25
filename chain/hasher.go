@@ -8,13 +8,13 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
+//go:generate mockgen -destination=./mocks/hasher_mock.go -package=mocks github.com/asgaines/blockchain/chain Hasher
 type Hasher interface {
 	Hash(b *Block) uint64
 }
 
 type hasher struct{}
 
-//go:generate mockgen -destination=./mocks/hasher_mock.go -package=mocks github.com/asgaines/blockchain/chain Hasher
 func NewHasher() Hasher {
 	return &hasher{}
 }

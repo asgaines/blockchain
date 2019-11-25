@@ -24,10 +24,11 @@ func InitChain(hasher Hasher, filesPrefix string) *Chain {
 	}
 
 	bc := Chain{
-		Pbc: &bcpb,
+		Pbc:    &bcpb,
+		Hasher: hasher,
 	}
 
-	if !bc.IsSolid(hasher) {
+	if !bc.IsSolid() {
 		log.Fatalf("Initialization failed due to broken chain in storage file: %s", getStorageFnameProto(filesPrefix))
 	}
 

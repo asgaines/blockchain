@@ -17,8 +17,9 @@ import (
 type Miner interface {
 	Mine(ctx context.Context, mineshaft chan<- *chain.Block)
 	AddTx(tx *pb.Tx)
-	ClearTxs()
+	SetPrevBlock(block *chain.Block)
 	SetTarget(target float64)
+	ClearTxs()
 }
 
 func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed, target float64, hasher chain.Hasher) Miner {
@@ -51,6 +52,7 @@ type miner struct {
 
 func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {
 	log.Printf("%f (target)", m.target)
+	defer close(conveyor)
 
 	for {
 		select {
@@ -69,7 +71,7 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {
 		// case UltraSpeed:
 		// }
 
-		blockCandidate := chain.NewBlock(
+		candidate := chain.NewBlock(
 			m.hasher,
 			m.prevBlock,
 			m.txpool,
@@ -78,9 +80,9 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {
 			m.pubkey,
 		)
 
-		if solved := float64(blockCandidate.Hash) <= m.target; solved {
-			conveyor <- blockCandidate
-			m.prevBlock = blockCandidate
+		if solved := float64(candidate.Hash) <= m.target; solved {
+			conveyor <- candidate
+			m.prevBlock = candidate
 			m.nonce = 0
 		} else {
 			m.nonce++
@@ -92,12 +94,16 @@ func (m *miner) AddTx(tx *pb.Tx) {
 	m.txpool = append(m.txpool, tx)
 }
 
-func (m *miner) ClearTxs() {
-	// TODO: ensure ALL txs in txpool are in new chain
-	// If not, keep orphans in txpool
-	m.txpool = []*pb.Tx{}
+func (m *miner) SetPrevBlock(block *chain.Block) {
+	m.prevBlock = block
 }
 
 func (m *miner) SetTarget(target float64) {
 	m.target = target
+}
+
+func (m *miner) ClearTxs() {
+	// TODO: ensure ALL txs in txpool are in new chain
+	// If not, keep orphans in txpool
+	m.txpool = []*pb.Tx{}
 }

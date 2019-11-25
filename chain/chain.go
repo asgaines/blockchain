@@ -10,7 +10,7 @@ import (
 
 type Chain struct {
 	Pbc    *pb.Chain
-	hasher Hasher
+	Hasher Hasher
 }
 
 func NewChain(hasher Hasher) *Chain {
@@ -29,7 +29,7 @@ func NewChain(hasher Hasher) *Chain {
 				genesis.ToProto(),
 			},
 		},
-		hasher: hasher,
+		Hasher: hasher,
 	}
 
 	return &chain
@@ -47,7 +47,7 @@ func (bc Chain) WithBlock(block *Block) *Chain {
 	}
 }
 
-func (bc Chain) IsSolid(hasher Hasher) bool {
+func (bc Chain) IsSolid() bool {
 	if len(bc.Pbc.Blocks) <= 0 {
 		return false
 	}
@@ -55,10 +55,10 @@ func (bc Chain) IsSolid(hasher Hasher) bool {
 	for i, block := range bc.Pbc.Blocks[1:] {
 		prev := bc.Pbc.Blocks[i]
 
-		prevhash := hasher.Hash((*Block)(prev))
+		prevhash := bc.Hasher.Hash((*Block)(prev))
 		if prevhash != block.Prevhash ||
 			prevhash != prev.Hash ||
-			block.Hash != hasher.Hash((*Block)(block)) ||
+			block.Hash != bc.Hasher.Hash((*Block)(block)) ||
 			float64(block.Hash) > block.Target {
 			return false
 		}

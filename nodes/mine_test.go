@@ -15,14 +15,14 @@ import (
 
 func TestGetDifficulty(t *testing.T) {
 	cases := []struct {
-		message        string
+		name           string
 		node           node
 		actualDur      time.Duration
 		currDifficulty float64
 		expected       float64
 	}{
 		{
-			message: "An exact match between actual and desired duration returns the same difficulty",
+			name: "An exact match between actual and desired duration returns the same difficulty",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 			},
@@ -31,7 +31,7 @@ func TestGetDifficulty(t *testing.T) {
 			expected:       1024,
 		},
 		{
-			message: "An actual duration half of expected returns a difficulty twice of the current value",
+			name: "An actual duration half of expected returns a difficulty twice of the current value",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 			},
@@ -40,7 +40,7 @@ func TestGetDifficulty(t *testing.T) {
 			expected:       2048,
 		},
 		{
-			message: "An actual duration twice of expected returns a difficulty half of the current value",
+			name: "An actual duration twice of expected returns a difficulty half of the current value",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 			},
@@ -49,7 +49,7 @@ func TestGetDifficulty(t *testing.T) {
 			expected:       512,
 		},
 		{
-			message: "An actual duration 1.5 times of expected returns a difficulty quotient of 1.5 of the current value",
+			name: "An actual duration 1.5 times of expected returns a difficulty quotient of 1.5 of the current value",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 			},
@@ -60,7 +60,7 @@ func TestGetDifficulty(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(c.message, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			got := c.node.calcDifficulty(c.actualDur, c.currDifficulty)
 
 			if got != c.expected {
@@ -72,13 +72,13 @@ func TestGetDifficulty(t *testing.T) {
 
 func TestRecalcTarget(t *testing.T) {
 	cases := []struct {
-		message      string
+		name         string
 		node         node
 		actualAvgDur time.Duration
 		expected     float64
 	}{
 		{
-			message: "Target is maximum (easiest) if difficulty was minimum and desired duration hit exactly",
+			name: "Target is maximum (easiest) if difficulty was minimum and desired duration hit exactly",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 				difficulty:        1,
@@ -87,7 +87,7 @@ func TestRecalcTarget(t *testing.T) {
 			expected:     MaxTarget,
 		},
 		{
-			message: "Target is maximum (easiest) even if actual block solve time is slower than desired for a formerly minimum difficulty",
+			name: "Target is maximum (easiest) even if actual block solve time is slower than desired for a formerly minimum difficulty",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 				difficulty:        1,
@@ -96,7 +96,7 @@ func TestRecalcTarget(t *testing.T) {
 			expected:     MaxTarget,
 		},
 		{
-			message: "Target is half of range when difficulty doubled from 1 -> 2",
+			name: "Target is half of range when difficulty doubled from 1 -> 2",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 				difficulty:        1,
@@ -105,7 +105,7 @@ func TestRecalcTarget(t *testing.T) {
 			expected:     MaxTarget / 2,
 		},
 		{
-			message: "Target is 1/8 of range when difficulty moves from 2 -> 8",
+			name: "Target is 1/8 of range when difficulty moves from 2 -> 8",
 			node: node{
 				targetDurPerBlock: 10 * time.Minute,
 				difficulty:        2,
@@ -116,7 +116,7 @@ func TestRecalcTarget(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(c.message, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			got := c.node.recalcTarget(c.actualAvgDur)
 
 			if got != c.expected {
@@ -151,13 +151,13 @@ func TestMine(t *testing.T) {
 	}
 
 	cases := []struct {
-		message   string
+		name      string
 		node      *node
 		mockCalls mockCalls
 		expected  expected
 	}{
 		{
-			message: "Mining a single block with exact desired duration has no effect on difficulty",
+			name: "Mining a single block with exact desired duration has no effect on difficulty",
 			node: &node{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
@@ -208,8 +208,8 @@ func TestMine(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(c.message, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
+		t.Run(c.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
 			mockMiner.EXPECT().Mine(gomock.Any(), gomock.Any()).
 				Do(func(ctx context.Context, conveyor chan<- *chain.Block) {
@@ -218,11 +218,14 @@ func TestMine(t *testing.T) {
 					for _, block := range c.mockCalls.mine.blocks {
 						conveyor <- block
 					}
+
+					close(conveyor)
 				}).Times(c.mockCalls.mine.times)
 			mockMiner.EXPECT().SetTarget(c.mockCalls.setTarget.target).Times(c.mockCalls.setTarget.times)
 			mockMiner.EXPECT().ClearTxs().Times(c.mockCalls.clearTxs.times)
 
 			c.node.miner = mockMiner
+
 			c.node.mine(ctx)
 
 			if c.node.difficulty != c.expected.difficulty {
@@ -239,13 +242,13 @@ func TestGetRecalcRangeDur(t *testing.T) {
 	}
 
 	cases := []struct {
-		message      string
+		name         string
 		chain        *chain.Chain
 		recalcPeriod int
 		expected     expected
 	}{
 		{
-			message: "A recalc period of 1 is the duration between the two links",
+			name: "A recalc period of 1 is the duration between the two links",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -269,7 +272,7 @@ func TestGetRecalcRangeDur(t *testing.T) {
 			},
 		},
 		{
-			message: "A recalc period of greater than the length of the chain yields an error",
+			name: "A recalc period of greater than the length of the chain yields an error",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -293,7 +296,7 @@ func TestGetRecalcRangeDur(t *testing.T) {
 			},
 		},
 		{
-			message: "A recalc period > 1 calculates the difference between the correct blocks",
+			name: "A recalc period > 1 calculates the difference between the correct blocks",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -330,7 +333,7 @@ func TestGetRecalcRangeDur(t *testing.T) {
 
 	n := node{}
 	for _, c := range cases {
-		t.Run(c.message, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			got, err := n.getRecalcRangeDur(c.chain, c.recalcPeriod)
 			if (err != nil) != c.expected.hasErr {
 				t.Errorf("expected error: %v, got %v", c.expected.hasErr, err)
@@ -350,13 +353,13 @@ func TestGetLastBlockDur(t *testing.T) {
 	}
 
 	cases := []struct {
-		message      string
+		name         string
 		chain        *chain.Chain
 		recalcPeriod int
 		expected     expected
 	}{
 		{
-			message: "The last solve duration is the difference between the two blocks for a chain of length 2",
+			name: "The last solve duration is the difference between the two blocks for a chain of length 2",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -379,7 +382,7 @@ func TestGetLastBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "The last solve duration correct for a chain of length > 2",
+			name: "The last solve duration correct for a chain of length > 2",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -412,7 +415,7 @@ func TestGetLastBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "Getting solve duration when only genesis block is present is an error",
+			name: "Getting solve duration when only genesis block is present is an error",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -433,7 +436,7 @@ func TestGetLastBlockDur(t *testing.T) {
 
 	n := node{}
 	for _, c := range cases {
-		t.Run(c.message, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			got, err := n.getLastBlockDur(c.chain)
 			if (err != nil) != c.expected.hasErr {
 				t.Errorf("expected error: %v, got %v", c.expected.hasErr, err)
@@ -453,13 +456,13 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 	}
 
 	cases := []struct {
-		message      string
+		name         string
 		chain        *chain.Chain
 		recalcPeriod int
 		expected     expected
 	}{
 		{
-			message: "A recalc period of 1 is the duration between the two links",
+			name: "A recalc period of 1 is the duration between the two links",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -483,7 +486,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "A recalc period of 2 averages the 2 solve durations",
+			name: "A recalc period of 2 averages the 2 solve durations",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -512,7 +515,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "A recalc period of 3 with a wide range of times yields the right average",
+			name: "A recalc period of 3 with a wide range of times yields the right average",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -546,7 +549,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "A recalc period of 4 with an expected output of a fractional second is correct",
+			name: "A recalc period of 4 with an expected output of a fractional second is correct",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -585,7 +588,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "An average solve duration for a single sub-second block is correct",
+			name: "An average solve duration for a single sub-second block is correct",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -611,7 +614,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "An average solve duration of more than one sub-second block is correct",
+			name: "An average solve duration of more than one sub-second block is correct",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -643,7 +646,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "An average solve duration of more than one sub-second block is correct with an odd-number value",
+			name: "An average solve duration of more than one sub-second block is correct with an odd-number value",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -675,7 +678,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 			},
 		},
 		{
-			message: "A chain with length greater than the recalc period has the correct durations used in calculation",
+			name: "A chain with length greater than the recalc period has the correct durations used in calculation",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -717,7 +720,7 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 
 	n := node{}
 	for _, c := range cases {
-		t.Run(c.message, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			got, err := n.getRangeAvgBlockDur(c.chain, c.recalcPeriod)
 			if (err != nil) != c.expected.hasErr {
 				t.Errorf("expected error: %v, got %v", c.expected.hasErr, err)
