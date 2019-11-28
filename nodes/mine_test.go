@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/asgaines/blockchain/chain"
+	"github.com/asgaines/blockchain/chain/mocks"
 	mm "github.com/asgaines/blockchain/mining/mocks"
 	"github.com/asgaines/blockchain/protogo/blockchain"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
@@ -22,11 +23,9 @@ func TestMine(t *testing.T) {
 	type mockCalls struct {
 		mine struct {
 			blocks []*chain.Block
-			times  int
 		}
 		setTarget struct {
-			difficulty float64
-			times      int
+			difficulties []float64
 		}
 		clearTxs struct {
 			times int
@@ -59,12 +58,11 @@ func TestMine(t *testing.T) {
 				},
 				targetDurPerBlock: 100 * time.Second,
 				recalcPeriod:      1,
-				difficulty:        1,
+				difficulty:        100,
 			},
 			mockCalls: mockCalls{
 				mine: struct {
 					blocks []*chain.Block
-					times  int
 				}{
 					blocks: []*chain.Block{
 						&chain.Block{
@@ -73,14 +71,11 @@ func TestMine(t *testing.T) {
 							},
 						},
 					},
-					times: 1,
 				},
 				setTarget: struct {
-					difficulty float64
-					times      int
+					difficulties []float64
 				}{
-					difficulty: 1,
-					times:      1,
+					difficulties: []float64{100},
 				},
 				clearTxs: struct {
 					times int
@@ -89,7 +84,404 @@ func TestMine(t *testing.T) {
 				},
 			},
 			expected: expected{
-				difficulty: 1,
+				difficulty: 100,
+			},
+		},
+		{
+			name: "Mining a single block with half desired duration doubles the difficulty",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Second,
+				recalcPeriod:      1,
+				difficulty:        100,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 50,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{200},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 1,
+				},
+			},
+			expected: expected{
+				difficulty: 200,
+			},
+		},
+		{
+			name: "Mining 3 blocks with a recalc period of 3 adjusts the difficulty by the average of all 3, taking slightly longer than desired",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Second,
+				recalcPeriod:      3,
+				difficulty:        100,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 100,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 199,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 307,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{97.71986970715871},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 3,
+				},
+			},
+			expected: expected{
+				difficulty: 97.71986970715871,
+			},
+		},
+		{
+			name: "Mining 3 blocks with a recalc period of 3 adjusts the difficulty by the average of all 3, taking slightly less time than desired",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Second,
+				recalcPeriod:      3,
+				difficulty:        100,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 103,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 201,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 298,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{100.67114093993514},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 3,
+				},
+			},
+			expected: expected{
+				difficulty: 100.67114093993514,
+			},
+		},
+		{
+			name: "Mining 3 blocks with a recalc period of 2 adjusts the difficulty by the average of only the first two, no second recalc triggered",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Second,
+				recalcPeriod:      2,
+				difficulty:        100,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 45,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 100,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 1000000,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{200},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 3,
+				},
+			},
+			expected: expected{
+				difficulty: 200,
+			},
+		},
+		{
+			name: "Two recalc events triggered",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Second,
+				recalcPeriod:      2,
+				difficulty:        100,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 108,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 300,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 325,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 400,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{
+						100 * (float64(2) / float64(3)),
+						(100 * (float64(2) / float64(3))) * 2,
+					},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 4,
+				},
+			},
+			expected: expected{
+				difficulty: (100 * (float64(2) / float64(3))) * 2,
+			},
+		},
+		{
+			name: "Sub-second duration, half expected duration doubles the difficulty",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Millisecond,
+				recalcPeriod:      1,
+				difficulty:        1000,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 0,
+								Nanos:   50_000_000,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{
+						2000,
+					},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 1,
+				},
+			},
+			expected: expected{
+				difficulty: 2000,
+			},
+		},
+		{
+			name: "5 difficulty adjustments for 5 solves; period of 1",
+			node: &node{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 0,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 10 * time.Millisecond,
+				recalcPeriod:      1,
+				difficulty:        1000,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 0,
+								Nanos:   20_000_000,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 0,
+								Nanos:   30_000_000,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 0,
+								Nanos:   45_000_000,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 0,
+								Nanos:   55_000_000,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 0,
+								Nanos:   60_000_000,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{
+						500,
+						500,
+						333 + (float64(1) / float64(3)),
+						333 + (float64(1) / float64(3)),
+						666 + (float64(2) / float64(3)),
+					},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 5,
+				},
+			},
+			expected: expected{
+				difficulty: 666 + (float64(2) / float64(3)),
 			},
 		},
 	}
@@ -107,8 +499,10 @@ func TestMine(t *testing.T) {
 					}
 
 					close(conveyor)
-				}).Times(c.mockCalls.mine.times)
-			mockMiner.EXPECT().SetTarget(c.mockCalls.setTarget.difficulty).Times(c.mockCalls.setTarget.times)
+				})
+			for _, difficulty := range c.mockCalls.setTarget.difficulties {
+				mockMiner.EXPECT().SetTarget(difficulty)
+			}
 			mockMiner.EXPECT().ClearTxs().Times(c.mockCalls.clearTxs.times)
 
 			c.node.miner = mockMiner
@@ -122,7 +516,259 @@ func TestMine(t *testing.T) {
 	}
 }
 
-func TestGetDifficulty(t *testing.T) {
+func TestIsValid(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockHasher := mocks.NewMockHasher(ctrl)
+
+	type mockHashCall struct {
+		in    *chain.Block
+		out   uint64
+		times int
+	}
+
+	cases := []struct {
+		name          string
+		chain         *chain.Chain
+		mockHashCalls []mockHashCall
+		want          bool
+	}{
+		{
+			name: "Empty chain is not valid",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*blockchain.Block{},
+				},
+			},
+			mockHashCalls: []mockHashCall{},
+			want:          false,
+		},
+		{
+			name: "Chain with valid hashing and prev hash reference is valid",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646459200,
+							},
+							Hash: 1948111840464954436,
+						},
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646469200,
+							},
+							Prevhash: 1948111840464954436,
+							Nonce:    12345,
+							Target:   18446744073709551615,
+							Pubkey:   "abc123",
+							Hash:     13857702854592346750,
+						},
+					},
+				},
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646459200,
+						},
+						Hash: 1948111840464954436,
+					},
+					out:   1948111840464954436,
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646469200,
+						},
+						Prevhash: 1948111840464954436,
+						Nonce:    12345,
+						Target:   18446744073709551615,
+						Pubkey:   "abc123",
+						Hash:     13857702854592346750,
+					},
+					out:   13857702854592346750,
+					times: 1,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Chain with hash reported differently from actual hash result is not valid",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646459200,
+							},
+							Hash: 1948111840464954436,
+						},
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646469200,
+							},
+							Prevhash: 1948111840464954436,
+							Nonce:    12345,
+							Target:   18446744073709551615,
+							Pubkey:   "abc123",
+							Hash:     13857702854592346751,
+						},
+					},
+				},
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646459200,
+						},
+						Hash: 1948111840464954436,
+					},
+					out:   1948111840464954436,
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646469200,
+						},
+						Prevhash: 1948111840464954436,
+						Nonce:    12345,
+						Target:   18446744073709551615,
+						Pubkey:   "abc123",
+						Hash:     13857702854592346751,
+					},
+					out:   13857702854592346750,
+					times: 1,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Chain with valid hash but missing (overshooting) the difficulty's target is not valid",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646459200,
+							},
+							Hash: 1948111840464954436,
+						},
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646469200,
+							},
+							Prevhash: 1948111840464954436,
+							Nonce:    123456789,
+							Target:   0, // Hardest possible target, requires full hash collision
+							Pubkey:   "abc123",
+							Hash:     16295015879318905250,
+						},
+					},
+				},
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646459200,
+						},
+						Hash: 1948111840464954436,
+					},
+					out:   1948111840464954436,
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646469200,
+						},
+						Prevhash: 1948111840464954436,
+						Nonce:    123456789,
+						Target:   0, // Hardest possible target, requires full hash collision
+						Pubkey:   "abc123",
+						Hash:     16295015879318905250,
+					},
+					out:   16295015879318905250,
+					times: 1,
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			for _, call := range c.mockHashCalls {
+				mockHasher.EXPECT().Hash(call.in).Return(call.out).Times(call.times)
+			}
+
+			n := node{
+				hasher: mockHasher,
+			}
+
+			got := n.IsValid(c.chain)
+
+			if got != c.want {
+				t.Errorf("want %v, got %v", c.want, got)
+			}
+		})
+	}
+}
+
+// func TestSetChain(t *testing.T) {
+// 	type nodeSetup struct {
+// 		chain *chain.Chain
+// 	}
+
+// 	type input struct {
+// 		chain   *chain.Chain
+// 		trusted bool
+// 	}
+
+// 	cases := []struct {
+// 		name      string
+// 		nodeSetup nodeSetup
+// 		input     input
+// 		expected  bool
+// 	}{
+// 		{
+// 			name: "Valid chain of equal length does not replace node chain",
+// 			nodeSetup: nodeSetup{
+// 				chain: &chain.Chain{
+// 					Pbc: &pb.Chain{
+// 						Blocks: []*pb.Block{
+// 							&pb.Block{},
+// 						},
+// 					},
+// 				},
+// 			},
+// 			input: input{
+// 				chain: &chain.Chain{
+// 					Pbc: &pb.Chain{
+// 						Blocks: []*pb.Block{
+// 							&pb.Block{},
+// 						},
+// 					},
+// 				},
+// 				trusted: false,
+// 			},
+// 			expected: false,
+// 		},
+// 	}
+
+// 	for _, c := range cases {
+// 		t.Run("", func(t *testing.T) {
+// 			t.Error(c)
+// 		})
+// 	}
+// }
+
+func TestCalcDifficulty(t *testing.T) {
 	cases := []struct {
 		name           string
 		node           node
@@ -690,6 +1336,50 @@ func TestGetRangeAvgBlockDur(t *testing.T) {
 
 			if got != c.expected.dur {
 				t.Errorf("expected %v, got %v", c.expected.dur, got)
+			}
+		})
+	}
+}
+
+func TestConfine(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       float64
+		expected float64
+	}{
+		{
+			name:     "An adjustment of 1 (no change) is allowed",
+			in:       1,
+			expected: 1,
+		},
+		{
+			name:     "A halving adjustment is allowed",
+			in:       float64(1) / float64(2),
+			expected: float64(1) / float64(2),
+		},
+		{
+			name:     "A doubling adjustment is allowed",
+			in:       2,
+			expected: 2,
+		},
+		{
+			name:     "An adjustment of multiplying by 5 is confined to 4",
+			in:       5,
+			expected: 4,
+		},
+		{
+			name:     "An adjustment of division by 5 is confined to 4",
+			in:       float64(1) / float64(5),
+			expected: float64(1) / float64(4),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			n := node{}
+			got := n.confine(c.in)
+			if got != c.expected {
+				t.Errorf("expected %v, got %v", c.expected, got)
 			}
 		})
 	}

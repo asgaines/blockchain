@@ -222,16 +222,15 @@ func TestSetTarget(t *testing.T) {
 			expected:   MaxTarget,
 		},
 		{
-			name:       "Target is 1/100th of total range for a difficulty of 100",
-			difficulty: 100,
-			expected:   MaxTarget / 100,
+			name:       "Target is 1/1000000th of total range for a difficulty of 1000000",
+			difficulty: 1000000,
+			expected:   MaxTarget / 1000000,
 		},
 	}
 
-	m := miner{}
-
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			m := miner{}
 			m.SetTarget(c.difficulty)
 
 			if m.target != c.expected {

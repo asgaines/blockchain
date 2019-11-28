@@ -28,14 +28,11 @@ func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetD
 	m := miner{
 		prevBlock: prevBlock,
 		pubkey:    pubkey,
-		// difficulty:        difficulty,
-		// targetDurPerBlock: targetDurPerBlock,
 		hashSpeed: hashSpeed,
 		hasher:    hasher,
 	}
 
 	m.SetTarget(difficulty)
-	// m.target = m.calcTarget(difficulty)
 
 	return &m
 }
@@ -44,12 +41,10 @@ type miner struct {
 	prevBlock *chain.Block
 	pubkey    string
 	target    float64
-	// targetDurPerBlock time.Duration
 	nonce     uint64
 	hashSpeed HashSpeed
 	txpool    []*pb.Tx
 	hasher    chain.Hasher
-	// difficulty        float64
 }
 
 func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {

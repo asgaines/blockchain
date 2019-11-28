@@ -51,7 +51,13 @@ func NewNode(c *chain.Chain, miner mining.Miner, pubkey string, poolID int, minP
 		log.Fatal(err)
 	}
 
+	f2, err := os.OpenFile(filesPrefix+"_stats.tsv", os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	n.dursF = f
+	n.statsF = f2
 
 	return &n
 }
@@ -75,6 +81,7 @@ type node struct {
 	recalcPeriod      int
 	serverPort        int
 	dursF             *os.File
+	statsF            *os.File
 	filesPrefix       string
 	difficulty        float64
 	hasher            chain.Hasher
@@ -93,10 +100,21 @@ func (n *node) Run(ctx context.Context) {
 	}()
 	defer n.close()
 
-	// go n.periodicDiscoverPeers(ctx)
-	go n.mine(ctx)
+	var wg sync.WaitGroup
 
-	<-ctx.Done()
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	go n.periodicDiscoverPeers(ctx)
+	// }()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		n.mine(ctx)
+	}()
+
+	wg.Wait()
 }
 
 func (n *node) close() {
@@ -107,6 +125,10 @@ func (n *node) close() {
 	}
 
 	if err := n.dursF.Close(); err != nil {
+		log.Println(err)
+	}
+
+	if err := n.statsF.Close(); err != nil {
 		log.Println(err)
 	}
 }

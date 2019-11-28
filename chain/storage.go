@@ -18,21 +18,13 @@ func InitChain(hasher Hasher, filesPrefix string) *Chain {
 	}
 
 	var bcpb pb.Chain
-
 	if err := proto.Unmarshal(b, &bcpb); err != nil {
 		log.Fatalf("could not unmarshal chain: %s", err)
 	}
 
-	bc := Chain{
-		Pbc:    &bcpb,
-		Hasher: hasher,
+	return &Chain{
+		Pbc: &bcpb,
 	}
-
-	if !bc.IsSolid() {
-		log.Fatalf("Initialization failed due to broken chain in storage file: %s", getStorageFnameProto(filesPrefix))
-	}
-
-	return &bc
 }
 
 func (c *Chain) Store(filesPrefix string) error {

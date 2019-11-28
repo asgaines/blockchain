@@ -11,6 +11,10 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
+// DiffConfineFactor is the maximum amount by which a difficulty value can be
+// adjusted by any one recalculation
+const DiffConfineFactor float64 = 4
+
 func (n *node) mine(ctx context.Context) {
 	conveyor := make(chan *chain.Block)
 
@@ -30,7 +34,7 @@ func (n *node) logBlock(block *chain.Block) {
 		log.Println(err)
 	}
 
-	if _, err := n.dursF.Write([]byte(fmt.Sprintf("%v\n", lastLinkDur.Seconds()))); err != nil {
+	if _, err := n.dursF.Write([]byte(fmt.Sprintf("%v\t%v\n", lastLinkDur.Seconds(), n.difficulty))); err != nil {
 		log.Printf("could not write to file: %s", err)
 	}
 
@@ -38,7 +42,7 @@ func (n *node) logBlock(block *chain.Block) {
 }
 
 func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
-	if (trusted || chain.IsSolid()) && chain.Length() > n.chain.Length() {
+	if (trusted || n.IsValid(chain)) && chain.Length() > n.chain.Length() {
 		n.chain = chain
 
 		n.logBlock(chain.LastLink())
@@ -49,8 +53,17 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 				log.Println(err)
 			}
 
+			log.Printf("avg dur per block: %vs", actualAvgBlockDur.Seconds())
+
+			if _, err := n.statsF.Write([]byte(fmt.Sprintf("%v\t%v\n", actualAvgBlockDur.Seconds(), n.difficulty))); err != nil {
+				log.Printf("could not write to file: %s", err)
+			}
+
 			difficulty := n.calcDifficulty(actualAvgBlockDur, n.difficulty)
+			log.Printf("new difficulty: %v", difficulty)
+			n.difficulty = difficulty
 			n.miner.SetTarget(difficulty)
+			fmt.Println()
 		}
 
 		n.miner.ClearTxs()
@@ -61,6 +74,26 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 
 	log.Println("Not overriding")
 	return false
+}
+
+func (n *node) IsValid(c *chain.Chain) bool {
+	if len(c.Pbc.Blocks) <= 0 {
+		return false
+	}
+
+	for i, block := range c.Pbc.Blocks[1:] {
+		prev := c.Pbc.Blocks[i]
+
+		prevhash := n.hasher.Hash((*chain.Block)(prev))
+		if prevhash != block.Prevhash ||
+			prevhash != prev.Hash ||
+			block.Hash != n.hasher.Hash((*chain.Block)(block)) ||
+			float64(block.Hash) > block.Target {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (n *node) getRecalcRangeDur(c *chain.Chain, recalcPeriod int) (time.Duration, error) {
@@ -92,6 +125,7 @@ func (n *node) getRangeAvgBlockDur(c *chain.Chain, recalcPeriod int) (time.Durat
 	if err != nil {
 		return 0, err
 	}
+	log.Printf("actual time: %vs", actualRangeDur.Seconds())
 
 	return actualRangeDur / time.Duration(recalcPeriod), nil
 }
@@ -99,19 +133,19 @@ func (n *node) getRangeAvgBlockDur(c *chain.Chain, recalcPeriod int) (time.Durat
 func (n *node) calcDifficulty(actualDurPerBlock time.Duration, currDifficulty float64) float64 {
 	// log.Printf("actual dur per block: %v", actualDurPerBlock)
 	adjustment := float64(n.targetDurPerBlock) / float64(actualDurPerBlock)
+	log.Printf("unconfined difficulty adjustment: %v", adjustment)
 	adjustment = n.confine(adjustment)
 
 	// log.Printf("%v (adjustment)", adjustment)
 	newDifficulty := currDifficulty * adjustment
 
-	n.difficulty = newDifficulty
 	return newDifficulty
 }
 
 // confine restricts the difficulty adjustment shift to a factor of +/-4 to protect against anomalous fluctuations
 func (n *node) confine(adjustment float64) float64 {
-	confined := math.Max(0.25, adjustment)
-	confined = math.Min(4, confined)
+	confined := math.Max(1/DiffConfineFactor, adjustment)
+	confined = math.Min(DiffConfineFactor, confined)
 
 	return confined
 }
