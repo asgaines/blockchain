@@ -252,6 +252,61 @@ func TestMine(t *testing.T) {
 			},
 		},
 		{
+			name: "Mining 3 blocks with a recalc period of 3 adjusts the difficulty by the average of all 3, taking slightly less time than desired, non-zero genesis block time",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &blockchain.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Timestamp: &timestamp.Timestamp{
+									Seconds: 10000,
+								},
+							},
+						},
+					},
+				},
+				targetDurPerBlock: 100 * time.Second,
+				recalcPeriod:      3,
+				difficulty:        100,
+			},
+			mockCalls: mockCalls{
+				mine: struct {
+					blocks []*chain.Block
+				}{
+					blocks: []*chain.Block{
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 10103,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 10201,
+							},
+						},
+						&chain.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 10298,
+							},
+						},
+					},
+				},
+				setTarget: struct {
+					difficulties []float64
+				}{
+					difficulties: []float64{100.67114093993514},
+				},
+				clearTxs: struct {
+					times int
+				}{
+					times: 3,
+				},
+			},
+			expected: expected{
+				difficulty: 100.67114093993514,
+			},
+		},
+		{
 			name: "Mining 3 blocks with a recalc period of 2 adjusts the difficulty by the average of only the first two, no second recalc triggered",
 			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
@@ -1233,7 +1288,7 @@ func TestCalcDifficulty(t *testing.T) {
 			},
 			actualDur:      15 * time.Minute,
 			currDifficulty: 1024,
-			expected:       1024 / 1.5,
+			expected:       682 + float64(2)/float64(3),
 		},
 		{
 			name: "An actual duration 10 times of expected returns a difficulty confined to 1/4 the previous amount, even though the calculation would be 1/10",
@@ -1252,6 +1307,24 @@ func TestCalcDifficulty(t *testing.T) {
 			actualDur:      1 * time.Minute,
 			currDifficulty: 1024,
 			expected:       1024 * 4,
+		},
+		{
+			name: "Actual duration very close (slightly longer) to desired adjusts slightly, highlighting math accuracy",
+			node: node{
+				targetDurPerBlock: 10 * time.Minute,
+			},
+			actualDur:      10*time.Minute + 4*time.Second + 563*time.Millisecond,
+			currDifficulty: 623503.2744,
+			expected:       618797.3207755022,
+		},
+		{
+			name: "Actual duration very close (slightly shorter) to desired adjusts slightly, highlighting math accuracy",
+			node: node{
+				targetDurPerBlock: 10 * time.Millisecond,
+			},
+			actualDur:      9*time.Millisecond + 981_613*time.Nanosecond,
+			currDifficulty: 1674902436.200243,
+			expected:       1677987752.280361,
 		},
 	}
 

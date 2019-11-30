@@ -108,10 +108,10 @@ func (m *miner) SetTarget(difficulty float64) error {
 		return fmt.Errorf("minimum difficulty is 1, cannot set target based on value %v", difficulty)
 	}
 
-	// TODO: Check into accuracy
-	diffF, _ := new(big.Float).SetFloat64(difficulty).Int(nil)
+	diffF := new(big.Float).SetFloat64(difficulty)
 
-	target := new(big.Int).Div(MaxTarget, diffF)
+	targetF := new(big.Float).Quo(new(big.Float).SetInt(MaxTarget), diffF)
+	target, _ := targetF.Int(nil)
 
 	if target.Cmp(MaxTarget) == 1 {
 		m.target = new(big.Int).Set(MaxTarget).Bytes()

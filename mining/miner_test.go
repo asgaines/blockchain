@@ -212,41 +212,74 @@ func TestSetTarget(t *testing.T) {
 		name       string
 		difficulty float64
 		expected   struct {
-			target []byte
-			hasErr bool
+			targetStr string
+			hasErr    bool
 		}
 	}{
 		{
 			name:       "Target is maximum (easiest) if difficulty is minimum",
 			difficulty: 1,
 			expected: struct {
-				target []byte
-				hasErr bool
+				targetStr string
+				hasErr    bool
 			}{
-				target: MaxTarget.Bytes(),
-				hasErr: false,
+				targetStr: "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+				hasErr:    false,
 			},
 		},
 		{
 			name:       "Target is 1/1000000th of total range for a difficulty of 1000000",
 			difficulty: 1000000,
 			expected: struct {
-				target []byte
-				hasErr bool
+				targetStr string
+				hasErr    bool
 			}{
-				target: new(big.Int).Set(MaxTarget).Div(MaxTarget, new(big.Int).SetUint64(1000000)).Bytes(),
-				hasErr: false,
+				targetStr: "115792089237316195423570985008687907853269984665640564039457584007913129",
+				hasErr:    false,
+			},
+		},
+		{
+			name:       "Uneven difficulty with significant fraction is taken into consideration",
+			difficulty: 612325.9,
+			expected: struct {
+				targetStr string
+				hasErr    bool
+			}{
+				targetStr: "189102060254704547073209780071556934681761644936635063270049858369936343",
+				hasErr:    false,
+			},
+		},
+		{
+			name:       "Uneven difficulty with highly significant fraction is taken into consideration",
+			difficulty: 1.9,
+			expected: struct {
+				targetStr string
+				hasErr    bool
+			}{
+				targetStr: "60943204861745368861271012402782623032378921027243951008185249832298398445201",
+				hasErr:    false,
+			},
+		},
+		{
+			name:       "Uneven and huge difficulty demonstrates math correctly",
+			difficulty: 1743957183243897527420721548712409572190353046234907457134129375192.3417295172395673428,
+			expected: struct {
+				targetStr string
+				hasErr    bool
+			}{
+				targetStr: "66396176666",
+				hasErr:    false,
 			},
 		},
 		{
 			name:       "Trying to set target based on a difficulty <1 is an error",
 			difficulty: 0.1,
 			expected: struct {
-				target []byte
-				hasErr bool
+				targetStr string
+				hasErr    bool
 			}{
-				target: []byte{},
-				hasErr: true,
+				targetStr: "0",
+				hasErr:    true,
 			},
 		},
 	}
@@ -254,12 +287,18 @@ func TestSetTarget(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			m := miner{}
+
 			if err := m.SetTarget(c.difficulty); (err != nil) != c.expected.hasErr {
 				t.Errorf("expected error: %v, got %v", c.expected.hasErr, err)
 			}
 
-			if !bytes.Equal(m.target, c.expected.target) {
-				t.Errorf("expected %v, got %v", c.expected.target, m.target)
+			expectedTarget, ok := new(big.Int).SetString(c.expected.targetStr, 10)
+			if !ok {
+				t.Fatalf("Invalid argument to big int creation: %s", c.expected.targetStr)
+			}
+
+			if !bytes.Equal(m.target, expectedTarget.Bytes()) {
+				t.Errorf("expected %v, got %v", expectedTarget.Bytes(), m.target)
 			}
 		})
 	}
