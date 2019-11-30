@@ -2,6 +2,8 @@ package nodes
 
 import (
 	"context"
+	"math/big"
+	"reflect"
 	"testing"
 	"time"
 
@@ -523,7 +525,7 @@ func TestIsValid(t *testing.T) {
 
 	type mockHashCall struct {
 		in    *chain.Block
-		out   uint64
+		out   []byte
 		times int
 	}
 
@@ -552,17 +554,17 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Hash: 1948111840464954436,
+							Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash: 1948111840464954436,
+							Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 							Nonce:    12345,
-							Target:   18446744073709551615,
+							Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
 							Pubkey:   "abc123",
-							Hash:     13857702854592346750,
+							Hash:     new(big.Int).SetUint64(13857702854592346750).Bytes(),
 						},
 					},
 				},
@@ -573,9 +575,9 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Hash: 1948111840464954436,
+						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					},
-					out:   1948111840464954436,
+					out:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					times: 1,
 				},
 				{
@@ -583,13 +585,13 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash: 1948111840464954436,
+						Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 						Nonce:    12345,
-						Target:   18446744073709551615,
+						Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
 						Pubkey:   "abc123",
-						Hash:     13857702854592346750,
+						Hash:     new(big.Int).SetUint64(13857702854592346750).Bytes(),
 					},
-					out:   13857702854592346750,
+					out:   new(big.Int).SetUint64(13857702854592346750).Bytes(),
 					times: 1,
 				},
 			},
@@ -604,17 +606,17 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Hash: 1948111840464954436,
+							Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash: 1948111840464954436,
+							Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 							Nonce:    12345,
-							Target:   18446744073709551615,
+							Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
 							Pubkey:   "abc123",
-							Hash:     13857702854592346751,
+							Hash:     new(big.Int).SetUint64(13857702854592346751).Bytes(),
 						},
 					},
 				},
@@ -625,9 +627,9 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Hash: 1948111840464954436,
+						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					},
-					out:   1948111840464954436,
+					out:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					times: 1,
 				},
 				{
@@ -635,13 +637,13 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash: 1948111840464954436,
+						Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 						Nonce:    12345,
-						Target:   18446744073709551615,
+						Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
 						Pubkey:   "abc123",
-						Hash:     13857702854592346751,
+						Hash:     new(big.Int).SetUint64(13857702854592346751).Bytes(),
 					},
-					out:   13857702854592346750,
+					out:   new(big.Int).SetUint64(13857702854592346750).Bytes(),
 					times: 1,
 				},
 			},
@@ -656,17 +658,17 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Hash: 1948111840464954436,
+							Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash: 1948111840464954436,
+							Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 							Nonce:    123456789,
-							Target:   0, // Hardest possible target, requires full hash collision
+							Target:   new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
 							Pubkey:   "abc123",
-							Hash:     16295015879318905250,
+							Hash:     new(big.Int).SetUint64(16295015879318905250).Bytes(),
 						},
 					},
 				},
@@ -677,9 +679,9 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Hash: 1948111840464954436,
+						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					},
-					out:   1948111840464954436,
+					out:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					times: 1,
 				},
 				{
@@ -687,13 +689,13 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash: 1948111840464954436,
+						Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 						Nonce:    123456789,
-						Target:   0, // Hardest possible target, requires full hash collision
+						Target:   new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
 						Pubkey:   "abc123",
-						Hash:     16295015879318905250,
+						Hash:     new(big.Int).SetUint64(16295015879318905250).Bytes(),
 					},
-					out:   16295015879318905250,
+					out:   new(big.Int).SetUint64(16295015879318905250).Bytes(),
 					times: 1,
 				},
 			},
@@ -720,53 +722,461 @@ func TestIsValid(t *testing.T) {
 	}
 }
 
-// func TestSetChain(t *testing.T) {
-// 	type nodeSetup struct {
-// 		chain *chain.Chain
-// 	}
+func TestSetChain(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-// 	type input struct {
-// 		chain   *chain.Chain
-// 		trusted bool
-// 	}
+	mockMiner := mm.NewMockMiner(ctrl)
+	mockHasher := mocks.NewMockHasher(ctrl)
 
-// 	cases := []struct {
-// 		name      string
-// 		nodeSetup nodeSetup
-// 		input     input
-// 		expected  bool
-// 	}{
-// 		{
-// 			name: "Valid chain of equal length does not replace node chain",
-// 			nodeSetup: nodeSetup{
-// 				chain: &chain.Chain{
-// 					Pbc: &pb.Chain{
-// 						Blocks: []*pb.Block{
-// 							&pb.Block{},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			input: input{
-// 				chain: &chain.Chain{
-// 					Pbc: &pb.Chain{
-// 						Blocks: []*pb.Block{
-// 							&pb.Block{},
-// 						},
-// 					},
-// 				},
-// 				trusted: false,
-// 			},
-// 			expected: false,
-// 		},
-// 	}
+	type nodeSetup struct {
+		chain        *chain.Chain
+		recalcPeriod int
+	}
 
-// 	for _, c := range cases {
-// 		t.Run("", func(t *testing.T) {
-// 			t.Error(c)
-// 		})
-// 	}
-// }
+	type input struct {
+		chain   *chain.Chain
+		trusted bool
+	}
+
+	type mockHashCall struct {
+		in    *chain.Block
+		out   []byte
+		times int
+	}
+
+	type mockMinerCalls struct {
+		numClearTxs  int
+		numSetTarget int
+	}
+
+	cases := []struct {
+		name            string
+		nodeSetup       nodeSetup
+		input           input
+		mockHashCalls   []mockHashCall
+		mockMinerCalls  mockMinerCalls
+		expectedReplace bool
+	}{
+		{
+			name: "Valid chain of equal length does not replace node chain",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				recalcPeriod: 1,
+			},
+			input: input{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				trusted: false,
+			},
+			mockHashCalls: []mockHashCall{},
+			mockMinerCalls: mockMinerCalls{
+				numClearTxs:  0,
+				numSetTarget: 0,
+			},
+			expectedReplace: false,
+		},
+		{
+			name: "Trusted chain (also valid) of equal length does not replace node chain",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				recalcPeriod: 1,
+			},
+			input: input{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				trusted: true,
+			},
+			mockHashCalls: []mockHashCall{},
+			mockMinerCalls: mockMinerCalls{
+				numClearTxs:  0,
+				numSetTarget: 0,
+			},
+			expectedReplace: false,
+		},
+		{
+			name: "Valid chain of equal length replaces old chain",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				recalcPeriod: 1,
+			},
+			input: input{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+							&pb.Block{
+								Hash:     []byte{2, 3, 4},
+								Prevhash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				trusted: false,
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Hash: []byte{1, 2, 3},
+					},
+					out:   []byte{1, 2, 3},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{2, 3, 4},
+						Prevhash: []byte{1, 2, 3},
+					},
+					out:   []byte{2, 3, 4},
+					times: 1,
+				},
+			},
+			mockMinerCalls: mockMinerCalls{
+				numClearTxs:  0,
+				numSetTarget: 0,
+			},
+			expectedReplace: false,
+		},
+		{
+			name: "Invalid chain hash (correct length) does not replace old chain",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				recalcPeriod: 1,
+			},
+			input: input{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+							&pb.Block{
+								Hash:     []byte{9, 9, 9},
+								Prevhash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				trusted: false,
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Hash: []byte{1, 2, 3},
+					},
+					out:   []byte{1, 2, 3},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{9, 9, 9},
+						Prevhash: []byte{1, 2, 3},
+					},
+					out:   []byte{2, 3, 4},
+					times: 1,
+				},
+			},
+			mockMinerCalls: mockMinerCalls{
+				numClearTxs:  0,
+				numSetTarget: 0,
+			},
+			expectedReplace: false,
+		},
+		{
+			name: "Valid chain (chain +1 of existing length) replaces old chain",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				recalcPeriod: 1,
+			},
+			input: input{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+							&pb.Block{
+								Hash:     []byte{2, 3, 4},
+								Prevhash: []byte{1, 2, 3},
+								Target:   []byte{2, 3, 4},
+							},
+						},
+					},
+				},
+				trusted: false,
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Hash: []byte{1, 2, 3},
+					},
+					out:   []byte{1, 2, 3},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{2, 3, 4},
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out:   []byte{2, 3, 4},
+					times: 1,
+				},
+			},
+			mockMinerCalls: mockMinerCalls{
+				numClearTxs:  1,
+				numSetTarget: 1,
+			},
+			expectedReplace: true,
+		},
+		{
+			name: "Valid chain (chain +3 of existing length) replaces old chain",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				recalcPeriod: 1,
+			},
+			input: input{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+							&pb.Block{
+								Hash:     []byte{2, 3, 4},
+								Prevhash: []byte{1, 2, 3},
+								Target:   []byte{2, 3, 4},
+							},
+							&pb.Block{
+								Hash:     []byte{3, 4, 5},
+								Prevhash: []byte{2, 3, 4},
+								Target:   []byte{3, 4, 5},
+							},
+							&pb.Block{
+								Hash:     []byte{4, 5, 6},
+								Prevhash: []byte{3, 4, 5},
+								Target:   []byte{4, 5, 6},
+							},
+						},
+					},
+				},
+				trusted: false,
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Hash:     []byte{4, 5, 6},
+						Prevhash: []byte{3, 4, 5},
+						Target:   []byte{4, 5, 6},
+					},
+					out:   []byte{4, 5, 6},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{3, 4, 5},
+						Prevhash: []byte{2, 3, 4},
+						Target:   []byte{3, 4, 5},
+					},
+					out:   []byte{3, 4, 5},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{3, 4, 5},
+						Prevhash: []byte{2, 3, 4},
+						Target:   []byte{3, 4, 5},
+					},
+					out:   []byte{3, 4, 5},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{2, 3, 4},
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out:   []byte{2, 3, 4},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{2, 3, 4},
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out:   []byte{2, 3, 4},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash: []byte{1, 2, 3},
+					},
+					out:   []byte{1, 2, 3},
+					times: 1,
+				},
+			},
+			mockMinerCalls: mockMinerCalls{
+				numClearTxs:  1,
+				numSetTarget: 1,
+			},
+			expectedReplace: true,
+		},
+		{
+			name: "Valid chain (chain +1 of existing length) replaces old chain, does not retrigger difficulty recalc when period not matched",
+			nodeSetup: nodeSetup{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+						},
+					},
+				},
+				recalcPeriod: 2,
+			},
+			input: input{
+				chain: &chain.Chain{
+					Pbc: &pb.Chain{
+						Blocks: []*pb.Block{
+							&pb.Block{
+								Hash: []byte{1, 2, 3},
+							},
+							&pb.Block{
+								Hash:     []byte{2, 3, 4},
+								Prevhash: []byte{1, 2, 3},
+								Target:   []byte{2, 3, 4},
+							},
+						},
+					},
+				},
+				trusted: false,
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Hash: []byte{1, 2, 3},
+					},
+					out:   []byte{1, 2, 3},
+					times: 1,
+				},
+				{
+					in: &chain.Block{
+						Hash:     []byte{2, 3, 4},
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out:   []byte{2, 3, 4},
+					times: 1,
+				},
+			},
+			mockMinerCalls: mockMinerCalls{
+				numClearTxs:  1,
+				numSetTarget: 0,
+			},
+			expectedReplace: true,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			for _, call := range c.mockHashCalls {
+				mockHasher.EXPECT().Hash(call.in).Return(call.out).Times(call.times)
+			}
+
+			mockMiner.EXPECT().SetTarget(gomock.Any()).Times(c.mockMinerCalls.numSetTarget)
+			mockMiner.EXPECT().ClearTxs().Times(c.mockMinerCalls.numClearTxs)
+
+			n := node{
+				chain:        c.nodeSetup.chain,
+				recalcPeriod: c.nodeSetup.recalcPeriod,
+				miner:        mockMiner,
+				hasher:       mockHasher,
+			}
+
+			got := n.setChain(c.input.chain, c.input.trusted)
+
+			if got != c.expectedReplace {
+				t.Errorf("expected replacement: %v, got %v", c.expectedReplace, got)
+			}
+
+			if c.expectedReplace {
+				if !reflect.DeepEqual(n.chain, c.input.chain) {
+					t.Errorf("expected chain: %v, got %v", c.input.chain, n.chain)
+				}
+			} else {
+				if !reflect.DeepEqual(n.chain, c.nodeSetup.chain) {
+					t.Errorf("expected chain: %v, got %v", c.nodeSetup.chain, n.chain)
+				}
+			}
+		})
+	}
+}
 
 func TestCalcDifficulty(t *testing.T) {
 	cases := []struct {

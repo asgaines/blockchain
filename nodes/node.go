@@ -46,12 +46,12 @@ func NewNode(c *chain.Chain, miner mining.Miner, pubkey string, poolID int, minP
 
 	// n.appendAddrs(n.getSeedAddrs())
 
-	f, err := os.OpenFile(filesPrefix+"_durs.txt", os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(filesPrefix+"_blocks.tsv", os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	f2, err := os.OpenFile(filesPrefix+"_stats.tsv", os.O_WRONLY|os.O_CREATE, 0644)
+	f2, err := os.OpenFile(filesPrefix+"_periods.tsv", os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}

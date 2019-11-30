@@ -9,10 +9,10 @@ import "google/protobuf/timestamp.proto";
 
 message Block {
 	google.protobuf.Timestamp timestamp = 1;
-	uint64 hash = 2;
-	uint64 prevhash = 3;
+	bytes hash = 2;
+	bytes prevhash = 3;
 	uint64 nonce = 4;
-	double target = 5;
+	bytes target = 5;
 	string pubkey = 6;
 	repeated Tx txs = 7;
 }

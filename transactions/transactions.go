@@ -10,14 +10,14 @@ import (
 )
 
 func SetHash(tx *pb.Tx) {
-	concat := fmt.Sprintf("%f", tx.Value)
-	concat += ptypes.TimestampString(tx.Timestamp)
-	concat += tx.For
-	concat += tx.From
-	concat += tx.To
+	payload := fmt.Sprintf("%f", tx.Value)
+	payload += ptypes.TimestampString(tx.Timestamp)
+	payload += tx.For
+	payload += tx.From
+	payload += tx.To
 
 	h := sha256.New()
-	h.Write([]byte(concat))
+	h.Write([]byte(payload))
 	hash := h.Sum(nil)
 
 	top8 := hash[:8]

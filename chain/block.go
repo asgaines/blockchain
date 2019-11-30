@@ -10,7 +10,7 @@ import (
 type Block pb.Block
 
 // NewBlock instantiates a Block from a payload
-func NewBlock(hasher Hasher, prev *Block, txs []*pb.Tx, nonce uint64, target float64, pubkey string) *Block {
+func NewBlock(hasher Hasher, prev *Block, txs []*pb.Tx, nonce uint64, target []byte, pubkey string) *Block {
 	b := &Block{
 		Timestamp: ptypes.TimestampNow(),
 		Prevhash:  prev.Hash,

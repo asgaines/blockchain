@@ -84,6 +84,8 @@ func main() {
 
 	hasher := chain.NewHasher()
 
+	filesPrefix = fmt.Sprintf("%s_%dp", targetDurPerBlock, recalcPeriod)
+
 	c := chain.InitChain(hasher, filesPrefix)
 
 	difficulty := InitialExpectedHashrate * targetDurPerBlock.Seconds()

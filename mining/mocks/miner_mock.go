@@ -84,9 +84,11 @@ func (mr *MockMinerMockRecorder) SetPrevBlock(arg0 interface{}) *gomock.Call {
 }
 
 // SetTarget mocks base method
-func (m *MockMiner) SetTarget(arg0 float64) {
+func (m *MockMiner) SetTarget(arg0 float64) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetTarget", arg0)
+	ret := m.ctrl.Call(m, "SetTarget", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // SetTarget indicates an expected call of SetTarget

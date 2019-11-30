@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -38,7 +39,7 @@ func (n *node) logBlock(block *chain.Block) {
 		log.Printf("could not write to file: %s", err)
 	}
 
-	log.Printf("%064b (%vs)\n", block.Hash, lastLinkDur.Seconds())
+	log.Printf("%064x (%vs)\n", block.Hash, lastLinkDur.Seconds())
 }
 
 func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
@@ -62,8 +63,8 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 			difficulty := n.calcDifficulty(actualAvgBlockDur, n.difficulty)
 			log.Printf("new difficulty: %v", difficulty)
 			n.difficulty = difficulty
-			n.miner.SetTarget(difficulty)
 			fmt.Println()
+			n.miner.SetTarget(difficulty)
 		}
 
 		n.miner.ClearTxs()
@@ -85,10 +86,10 @@ func (n *node) IsValid(c *chain.Chain) bool {
 		prev := c.Pbc.Blocks[i]
 
 		prevhash := n.hasher.Hash((*chain.Block)(prev))
-		if prevhash != block.Prevhash ||
-			prevhash != prev.Hash ||
-			block.Hash != n.hasher.Hash((*chain.Block)(block)) ||
-			float64(block.Hash) > block.Target {
+		if !bytes.Equal(prevhash, block.Prevhash) ||
+			!bytes.Equal(prevhash, prev.Hash) ||
+			!bytes.Equal(block.Hash, n.hasher.Hash((*chain.Block)(block))) ||
+			bytes.Compare(block.Hash, block.Target) == 1 {
 			return false
 		}
 	}

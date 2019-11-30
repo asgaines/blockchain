@@ -18,7 +18,7 @@ func NewChain(hasher Hasher) *Chain {
 		&Block{},
 		[]*pb.Tx{},
 		0,
-		0,
+		[]byte{},
 		"",
 	)
 

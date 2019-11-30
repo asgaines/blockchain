@@ -1,7 +1,9 @@
 package mining
 
 import (
+	"bytes"
 	"context"
+	"math/big"
 	"testing"
 	"time"
 
@@ -17,11 +19,11 @@ func TestMine(t *testing.T) {
 
 	type minerSetup struct {
 		prevBlock *chain.Block
-		target    float64
+		target    []byte
 	}
 
 	type mockHashCall struct {
-		out   uint64
+		out   []byte
 		times int
 	}
 
@@ -39,11 +41,11 @@ func TestMine(t *testing.T) {
 			name: "Hashing to the exact target is a successful solve, first try",
 			minerSetup: minerSetup{
 				prevBlock: &chain.Block{},
-				target:    1000,
+				target:    []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   1000,
+					out:   []byte{123, 234},
 					times: 1,
 				},
 			},
@@ -55,19 +57,19 @@ func TestMine(t *testing.T) {
 			name: "Hashing to the exact target is a successful solve, third try",
 			minerSetup: minerSetup{
 				prevBlock: &chain.Block{},
-				target:    1000,
+				target:    []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   48067290,
+					out:   []byte{123, 234, 1},
 					times: 1,
 				},
 				{
-					out:   712401678015,
+					out:   []byte{123, 234, 123},
 					times: 1,
 				},
 				{
-					out:   1000,
+					out:   []byte{123, 234},
 					times: 1,
 				},
 			},
@@ -79,19 +81,19 @@ func TestMine(t *testing.T) {
 			name: "Lucky first hash, no luck afterwards",
 			minerSetup: minerSetup{
 				prevBlock: &chain.Block{},
-				target:    1000,
+				target:    []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   999,
+					out:   []byte{123, 233},
 					times: 1,
 				},
 				{
-					out:   712401678015,
+					out:   []byte{51, 36, 201, 123, 233},
 					times: 1,
 				},
 				{
-					out:   1001,
+					out:   []byte{123, 235},
 					times: 1,
 				},
 			},
@@ -103,27 +105,27 @@ func TestMine(t *testing.T) {
 			name: "5 unsuccessful hashes yield no solves",
 			minerSetup: minerSetup{
 				prevBlock: &chain.Block{},
-				target:    1000,
+				target:    []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   48067290,
+					out:   []byte{5, 132, 99, 80, 1},
 					times: 1,
 				},
 				{
-					out:   712401678015,
+					out:   []byte{35, 232, 59, 89, 1},
 					times: 1,
 				},
 				{
-					out:   1001,
+					out:   []byte{123, 235},
 					times: 1,
 				},
 				{
-					out:   1002,
+					out:   []byte{123, 236},
 					times: 1,
 				},
 				{
-					out:   1003,
+					out:   []byte{123, 237},
 					times: 1,
 				},
 			},
@@ -135,27 +137,27 @@ func TestMine(t *testing.T) {
 			name: "5 successful hashes yields 5 solves",
 			minerSetup: minerSetup{
 				prevBlock: &chain.Block{},
-				target:    1000,
+				target:    []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   1000,
+					out:   []byte{123, 234},
 					times: 1,
 				},
 				{
-					out:   999,
+					out:   []byte{123, 233},
 					times: 1,
 				},
 				{
-					out:   0,
+					out:   []byte{0},
 					times: 1,
 				},
 				{
-					out:   5,
+					out:   []byte{5},
 					times: 1,
 				},
 				{
-					out:   25,
+					out:   []byte{25},
 					times: 1,
 				},
 			},
@@ -173,9 +175,9 @@ func TestMine(t *testing.T) {
 			conveyor := make(chan *chain.Block)
 
 			for n, call := range c.mockHashCalls {
-				func(lastCall bool, out uint64) {
+				func(lastCall bool, out []byte) {
 					mockHasher.EXPECT().Hash(gomock.Any()).
-						DoAndReturn(func(block *chain.Block) uint64 {
+						DoAndReturn(func(block *chain.Block) []byte {
 							if lastCall {
 								cancel()
 							}
@@ -209,32 +211,55 @@ func TestSetTarget(t *testing.T) {
 	cases := []struct {
 		name       string
 		difficulty float64
-		expected   float64
+		expected   struct {
+			target []byte
+			hasErr bool
+		}
 	}{
 		{
 			name:       "Target is maximum (easiest) if difficulty is minimum",
 			difficulty: 1,
-			expected:   MaxTarget,
-		},
-		{
-			name:       "Target is maximum (easiest) if difficulty is less than 1: edge case, since minimum difficulty is 1",
-			difficulty: 0.1,
-			expected:   MaxTarget,
+			expected: struct {
+				target []byte
+				hasErr bool
+			}{
+				target: MaxTarget.Bytes(),
+				hasErr: false,
+			},
 		},
 		{
 			name:       "Target is 1/1000000th of total range for a difficulty of 1000000",
 			difficulty: 1000000,
-			expected:   MaxTarget / 1000000,
+			expected: struct {
+				target []byte
+				hasErr bool
+			}{
+				target: new(big.Int).Set(MaxTarget).Div(MaxTarget, new(big.Int).SetUint64(1000000)).Bytes(),
+				hasErr: false,
+			},
+		},
+		{
+			name:       "Trying to set target based on a difficulty <1 is an error",
+			difficulty: 0.1,
+			expected: struct {
+				target []byte
+				hasErr bool
+			}{
+				target: []byte{},
+				hasErr: true,
+			},
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			m := miner{}
-			m.SetTarget(c.difficulty)
+			if err := m.SetTarget(c.difficulty); (err != nil) != c.expected.hasErr {
+				t.Errorf("expected error: %v, got %v", c.expected.hasErr, err)
+			}
 
-			if m.target != c.expected {
-				t.Errorf("expected %v, got %v", c.expected, m.target)
+			if !bytes.Equal(m.target, c.expected.target) {
+				t.Errorf("expected %v, got %v", c.expected.target, m.target)
 			}
 		})
 	}

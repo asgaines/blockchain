@@ -34,10 +34,10 @@ func (m *MockHasher) EXPECT() *MockHasherMockRecorder {
 }
 
 // Hash mocks base method
-func (m *MockHasher) Hash(arg0 *chain.Block) uint64 {
+func (m *MockHasher) Hash(arg0 *chain.Block) []byte {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Hash", arg0)
-	ret0, _ := ret[0].(uint64)
+	ret0, _ := ret[0].([]byte)
 	return ret0
 }
 
