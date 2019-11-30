@@ -22,6 +22,13 @@ func TestMine(t *testing.T) {
 
 	mockMiner := mm.NewMockMiner(ctrl)
 
+	type nodeSetup struct {
+		chain             *chain.Chain
+		targetDurPerBlock time.Duration
+		recalcPeriod      int
+		difficulty        float64
+	}
+
 	type mockCalls struct {
 		mine struct {
 			blocks []*chain.Block
@@ -40,13 +47,13 @@ func TestMine(t *testing.T) {
 
 	cases := []struct {
 		name      string
-		node      *node
+		nodeSetup nodeSetup
 		mockCalls mockCalls
 		expected  expected
 	}{
 		{
 			name: "Mining a single block with exact desired duration has no effect on difficulty",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -91,7 +98,7 @@ func TestMine(t *testing.T) {
 		},
 		{
 			name: "Mining a single block with half desired duration doubles the difficulty",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -136,7 +143,7 @@ func TestMine(t *testing.T) {
 		},
 		{
 			name: "Mining 3 blocks with a recalc period of 3 adjusts the difficulty by the average of all 3, taking slightly longer than desired",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -191,7 +198,7 @@ func TestMine(t *testing.T) {
 		},
 		{
 			name: "Mining 3 blocks with a recalc period of 3 adjusts the difficulty by the average of all 3, taking slightly less time than desired",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -246,7 +253,7 @@ func TestMine(t *testing.T) {
 		},
 		{
 			name: "Mining 3 blocks with a recalc period of 2 adjusts the difficulty by the average of only the first two, no second recalc triggered",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -301,7 +308,7 @@ func TestMine(t *testing.T) {
 		},
 		{
 			name: "Two recalc events triggered",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -364,7 +371,7 @@ func TestMine(t *testing.T) {
 		},
 		{
 			name: "Sub-second duration, half expected duration doubles the difficulty",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -412,7 +419,7 @@ func TestMine(t *testing.T) {
 		},
 		{
 			name: "5 difficulty adjustments for 5 solves; period of 1",
-			node: &node{
+			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &blockchain.Chain{
 						Blocks: []*pb.Block{
@@ -492,7 +499,7 @@ func TestMine(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
-			mockMiner.EXPECT().Mine(gomock.Any(), gomock.Any()).
+			mockMiner.EXPECT().Mine(ctx, gomock.Any()).
 				Do(func(ctx context.Context, conveyor chan<- *chain.Block) {
 					defer cancel()
 
@@ -507,12 +514,18 @@ func TestMine(t *testing.T) {
 			}
 			mockMiner.EXPECT().ClearTxs().Times(c.mockCalls.clearTxs.times)
 
-			c.node.miner = mockMiner
+			n := &node{
+				chain:             c.nodeSetup.chain,
+				targetDurPerBlock: c.nodeSetup.targetDurPerBlock,
+				recalcPeriod:      c.nodeSetup.recalcPeriod,
+				difficulty:        c.nodeSetup.difficulty,
+				miner:             mockMiner,
+			}
 
-			c.node.mine(ctx)
+			n.mine(ctx)
 
-			if c.node.difficulty != c.expected.difficulty {
-				t.Errorf("expected %v got %v", c.expected.difficulty, c.node.difficulty)
+			if n.difficulty != c.expected.difficulty {
+				t.Errorf("expected %v got %v", c.expected.difficulty, n.difficulty)
 			}
 		})
 	}
