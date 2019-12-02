@@ -26,7 +26,7 @@ import (
 //
 // Setting it too high could lead to the genesis block solve taking a long time
 // before the difficulty is adjusted.
-const InitialExpectedHashrate = float64(100)
+const InitialExpectedHashrate = float64(700000)
 
 func main() {
 	var pubkey string
@@ -37,6 +37,7 @@ func main() {
 	var targetDurPerBlock time.Duration
 	var recalcPeriod int
 	var speedArg string
+	var numMiners int
 	var filesPrefix string
 
 	flag.IntVar(&poolID, "poolid", 0, "The ID for a node within a single miner's pool (nodes with same pubkey).")
@@ -46,6 +47,7 @@ func main() {
 	flag.DurationVar(&targetDurPerBlock, "targetdur", 10*time.Minute, "The desired amount of time between block mining events; controls the difficulty of the mining")
 	flag.IntVar(&recalcPeriod, "recalc", 2016, "How many blocks to solve before recalculating difficulty target")
 	flag.StringVar(&speedArg, "speed", "medium", "Speed of hashing, CPU usage. One of low/medium/high/ultra")
+	flag.IntVar(&numMiners, "miners", 1, "The number of miners to run, one per CPU thread")
 	flag.StringVar(&filesPrefix, "filesprefix", "run", "Common prefix for all output files")
 
 	flag.Parse()
@@ -84,24 +86,29 @@ func main() {
 
 	hasher := chain.NewHasher()
 
-	filesPrefix = fmt.Sprintf("%s_%dp", targetDurPerBlock, recalcPeriod)
+	filesPrefix = fmt.Sprintf("%s_%dp_%dm", targetDurPerBlock, recalcPeriod, numMiners)
 
 	c := chain.InitChain(hasher, filesPrefix)
 
 	difficulty := InitialExpectedHashrate * targetDurPerBlock.Seconds()
 
-	miner := mining.NewMiner(
-		(*chain.Block)(c.LastLink()),
-		pubkey,
-		difficulty,
-		targetDurPerBlock,
-		speed,
-		hasher,
-	)
+	miners := make([]mining.Miner, 0, numMiners)
+
+	for n := 0; n < numMiners; n++ {
+		miners = append(miners, mining.NewMiner(
+			n,
+			(*chain.Block)(c.LastLink()),
+			pubkey,
+			difficulty,
+			targetDurPerBlock,
+			speed,
+			hasher,
+		))
+	}
 
 	node := nodes.NewNode(
 		c,
-		miner,
+		miners,
 		pubkey,
 		poolID,
 		minPeers,

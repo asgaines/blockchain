@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/asgaines/blockchain/chain"
+	"github.com/asgaines/blockchain/mining"
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -17,16 +19,47 @@ import (
 const DiffConfineFactor float64 = 4
 
 func (n *node) mine(ctx context.Context) {
-	conveyor := make(chan *chain.Block)
+	conveyors := make([]<-chan mining.BlockReport, 0, len(n.miners))
 
-	go n.miner.Mine(ctx, conveyor)
+	for _, miner := range n.miners {
+		conveyor := make(chan mining.BlockReport)
+		conveyors = append(conveyors, conveyor)
 
-	for minedBlock := range conveyor {
-		chain := n.chain.WithBlock(minedBlock)
+		go miner.Mine(ctx, conveyor)
+	}
+
+	mergedConveyors := n.mergeConveyors(conveyors...)
+
+	for minedBlock := range mergedConveyors {
+		log.Println("got a solve from ID %d", minedBlock.ID)
+		chain := n.chain.WithBlock(minedBlock.Block)
 		if overridden := n.setChain(chain, true); !overridden {
 			log.Fatal("solving a block did not successfully lead to chain override")
 		}
 	}
+}
+
+func (n *node) mergeConveyors(conveyors ...<-chan mining.BlockReport) <-chan mining.BlockReport {
+	mergedConveyors := make(chan mining.BlockReport)
+
+	go func() {
+		var wg sync.WaitGroup
+
+		wg.Add(len(conveyors))
+		for _, c := range conveyors {
+			go func(c <-chan mining.BlockReport) {
+				for solve := range c {
+					mergedConveyors <- solve
+				}
+				wg.Done()
+			}(c)
+		}
+
+		wg.Wait()
+		close(mergedConveyors)
+	}()
+
+	return mergedConveyors
 }
 
 func (n *node) logBlock(block *chain.Block) {
@@ -64,10 +97,10 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 			log.Printf("new difficulty: %v", difficulty)
 			n.difficulty = difficulty
 			fmt.Println()
-			n.miner.SetTarget(difficulty)
+			n.updateTarget(difficulty)
 		}
 
-		n.miner.ClearTxs()
+		n.clearTxs()
 		// n.propagateChain()
 
 		return true
@@ -75,6 +108,18 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 
 	log.Println("Not overriding")
 	return false
+}
+
+func (n *node) updateTarget(difficulty float64) {
+	for _, miner := range n.miners {
+		miner.SetTarget(difficulty)
+	}
+}
+
+func (n *node) clearTxs() {
+	for _, miner := range n.miners {
+		miner.ClearTxs()
+	}
 }
 
 func (n *node) IsValid(c *chain.Chain) bool {

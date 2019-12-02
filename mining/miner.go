@@ -24,16 +24,22 @@ var MaxTarget = new(big.Int).SetBytes([]byte{
 
 //go:generate mockgen -destination=./mocks/miner_mock.go -package=mocks github.com/asgaines/blockchain/mining Miner
 type Miner interface {
-	Mine(ctx context.Context, mineshaft chan<- *chain.Block)
+	Mine(ctx context.Context, mineshaft chan<- BlockReport)
 	AddTx(tx *pb.Tx)
 	SetPrevBlock(block *chain.Block)
 	SetTarget(difficulty float64) error
 	ClearTxs()
 }
 
+type BlockReport struct {
+	ID    int
+	Block *chain.Block
+}
+
 // NewMiner returns an implementation of Miner, ready to begin mining
-func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed, hasher chain.Hasher) Miner {
+func NewMiner(ID int, prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed, hasher chain.Hasher) Miner {
 	m := miner{
+		ID:        ID,
 		prevBlock: prevBlock,
 		pubkey:    pubkey,
 		hashSpeed: hashSpeed,
@@ -48,6 +54,7 @@ func NewMiner(prevBlock *chain.Block, pubkey string, difficulty float64, targetD
 }
 
 type miner struct {
+	ID        int
 	prevBlock *chain.Block
 	pubkey    string
 	target    []byte
@@ -57,7 +64,7 @@ type miner struct {
 	hasher    chain.Hasher
 }
 
-func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {
+func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 	defer close(conveyor)
 
 	for {
@@ -88,9 +95,13 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- *chain.Block) {
 
 		hb := new(big.Int).SetBytes(candidate.Hash)
 		tb := new(big.Int).SetBytes(m.target)
+
 		cmp := hb.Cmp(tb)
 		if solved := cmp == 0 || cmp == -1; solved {
-			conveyor <- candidate
+			conveyor <- BlockReport{
+				ID:    m.ID,
+				Block: candidate,
+			}
 			m.prevBlock = candidate
 			m.nonce = 0
 		} else {

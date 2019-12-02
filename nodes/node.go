@@ -26,10 +26,10 @@ type Node interface {
 
 // NewNode instantiates a Node; a blockchain client for mining
 // and propagating new blocks/transactions
-func NewNode(c *chain.Chain, miner mining.Miner, pubkey string, poolID int, minPeers int, maxPeers int, targetDurPerBlock time.Duration, recalcPeriod int, serverPort int, speed mining.HashSpeed, filesPrefix string, difficulty float64, hasher chain.Hasher) Node {
+func NewNode(c *chain.Chain, miners []mining.Miner, pubkey string, poolID int, minPeers int, maxPeers int, targetDurPerBlock time.Duration, recalcPeriod int, serverPort int, speed mining.HashSpeed, filesPrefix string, difficulty float64, hasher chain.Hasher) Node {
 	n := node{
 		chain:             c,
-		miner:             miner,
+		miners:            miners,
 		pubkey:            pubkey,
 		poolID:            poolID,
 		peers:             make(map[NodeID]Peer),
@@ -71,7 +71,7 @@ type node struct {
 	// poolID allows a single pubkey to be used across multiple nodes. Each
 	// node within the single miner's pool should have a unique ID.
 	poolID            int
-	miner             mining.Miner
+	miners            []mining.Miner
 	peers             map[NodeID]Peer
 	knownAddrs        dmaps.Dmap
 	minPeers          int

@@ -55,7 +55,9 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 		return nil, errors.New("`to` must not be empty")
 	}
 
-	n.miner.AddTx(r.Tx)
+	for _, miner := range n.miners {
+		miner.AddTx(r.Tx)
+	}
 
 	var except NodeID
 	if nodeID := r.GetNodeID(); nodeID != nil {
