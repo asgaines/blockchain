@@ -110,8 +110,7 @@ func (m *miner) SetTarget(difficulty float64) error {
 
 	diffF := new(big.Float).SetFloat64(difficulty)
 
-	targetF := new(big.Float).Quo(new(big.Float).SetInt(MaxTarget), diffF)
-	target, _ := targetF.Int(nil)
+	target, _ := new(big.Float).Quo(new(big.Float).SetInt(MaxTarget), diffF).Int(nil)
 
 	if target.Cmp(MaxTarget) == 1 {
 		m.target = new(big.Int).Set(MaxTarget).Bytes()

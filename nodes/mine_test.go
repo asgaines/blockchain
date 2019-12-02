@@ -592,9 +592,8 @@ func TestIsValid(t *testing.T) {
 	mockHasher := mocks.NewMockHasher(ctrl)
 
 	type mockHashCall struct {
-		in    *chain.Block
-		out   []byte
-		times int
+		in  *chain.Block
+		out []byte
 	}
 
 	cases := []struct {
@@ -645,8 +644,7 @@ func TestIsValid(t *testing.T) {
 						},
 						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					},
-					out:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-					times: 1,
+					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 				},
 				{
 					in: &chain.Block{
@@ -659,8 +657,7 @@ func TestIsValid(t *testing.T) {
 						Pubkey:   "abc123",
 						Hash:     new(big.Int).SetUint64(13857702854592346750).Bytes(),
 					},
-					out:   new(big.Int).SetUint64(13857702854592346750).Bytes(),
-					times: 1,
+					out: new(big.Int).SetUint64(13857702854592346750).Bytes(),
 				},
 			},
 			want: true,
@@ -697,8 +694,7 @@ func TestIsValid(t *testing.T) {
 						},
 						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					},
-					out:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-					times: 1,
+					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 				},
 				{
 					in: &chain.Block{
@@ -711,8 +707,7 @@ func TestIsValid(t *testing.T) {
 						Pubkey:   "abc123",
 						Hash:     new(big.Int).SetUint64(13857702854592346751).Bytes(),
 					},
-					out:   new(big.Int).SetUint64(13857702854592346750).Bytes(),
-					times: 1,
+					out: new(big.Int).SetUint64(13857702854592346750).Bytes(),
 				},
 			},
 			want: false,
@@ -749,8 +744,7 @@ func TestIsValid(t *testing.T) {
 						},
 						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 					},
-					out:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-					times: 1,
+					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 				},
 				{
 					in: &chain.Block{
@@ -763,8 +757,7 @@ func TestIsValid(t *testing.T) {
 						Pubkey:   "abc123",
 						Hash:     new(big.Int).SetUint64(16295015879318905250).Bytes(),
 					},
-					out:   new(big.Int).SetUint64(16295015879318905250).Bytes(),
-					times: 1,
+					out: new(big.Int).SetUint64(16295015879318905250).Bytes(),
 				},
 			},
 			want: false,
@@ -774,7 +767,7 @@ func TestIsValid(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			for _, call := range c.mockHashCalls {
-				mockHasher.EXPECT().Hash(call.in).Return(call.out).Times(call.times)
+				mockHasher.EXPECT().Hash(call.in).Return(call.out)
 			}
 
 			n := node{
@@ -808,9 +801,8 @@ func TestSetChain(t *testing.T) {
 	}
 
 	type mockHashCall struct {
-		in    *chain.Block
-		out   []byte
-		times int
+		in  *chain.Block
+		out []byte
 	}
 
 	type mockMinerCalls struct {
@@ -927,16 +919,14 @@ func TestSetChain(t *testing.T) {
 					in: &chain.Block{
 						Hash: []byte{1, 2, 3},
 					},
-					out:   []byte{1, 2, 3},
-					times: 1,
+					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
 						Hash:     []byte{2, 3, 4},
 						Prevhash: []byte{1, 2, 3},
 					},
-					out:   []byte{2, 3, 4},
-					times: 1,
+					out: []byte{2, 3, 4},
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
@@ -980,16 +970,14 @@ func TestSetChain(t *testing.T) {
 					in: &chain.Block{
 						Hash: []byte{1, 2, 3},
 					},
-					out:   []byte{1, 2, 3},
-					times: 1,
+					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
 						Hash:     []byte{9, 9, 9},
 						Prevhash: []byte{1, 2, 3},
 					},
-					out:   []byte{2, 3, 4},
-					times: 1,
+					out: []byte{2, 3, 4},
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
@@ -1034,8 +1022,7 @@ func TestSetChain(t *testing.T) {
 					in: &chain.Block{
 						Hash: []byte{1, 2, 3},
 					},
-					out:   []byte{1, 2, 3},
-					times: 1,
+					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
@@ -1043,8 +1030,7 @@ func TestSetChain(t *testing.T) {
 						Prevhash: []byte{1, 2, 3},
 						Target:   []byte{2, 3, 4},
 					},
-					out:   []byte{2, 3, 4},
-					times: 1,
+					out: []byte{2, 3, 4},
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
@@ -1101,8 +1087,7 @@ func TestSetChain(t *testing.T) {
 						Prevhash: []byte{3, 4, 5},
 						Target:   []byte{4, 5, 6},
 					},
-					out:   []byte{4, 5, 6},
-					times: 1,
+					out: []byte{4, 5, 6},
 				},
 				{
 					in: &chain.Block{
@@ -1110,8 +1095,7 @@ func TestSetChain(t *testing.T) {
 						Prevhash: []byte{2, 3, 4},
 						Target:   []byte{3, 4, 5},
 					},
-					out:   []byte{3, 4, 5},
-					times: 1,
+					out: []byte{3, 4, 5},
 				},
 				{
 					in: &chain.Block{
@@ -1119,8 +1103,7 @@ func TestSetChain(t *testing.T) {
 						Prevhash: []byte{2, 3, 4},
 						Target:   []byte{3, 4, 5},
 					},
-					out:   []byte{3, 4, 5},
-					times: 1,
+					out: []byte{3, 4, 5},
 				},
 				{
 					in: &chain.Block{
@@ -1128,8 +1111,7 @@ func TestSetChain(t *testing.T) {
 						Prevhash: []byte{1, 2, 3},
 						Target:   []byte{2, 3, 4},
 					},
-					out:   []byte{2, 3, 4},
-					times: 1,
+					out: []byte{2, 3, 4},
 				},
 				{
 					in: &chain.Block{
@@ -1137,15 +1119,13 @@ func TestSetChain(t *testing.T) {
 						Prevhash: []byte{1, 2, 3},
 						Target:   []byte{2, 3, 4},
 					},
-					out:   []byte{2, 3, 4},
-					times: 1,
+					out: []byte{2, 3, 4},
 				},
 				{
 					in: &chain.Block{
 						Hash: []byte{1, 2, 3},
 					},
-					out:   []byte{1, 2, 3},
-					times: 1,
+					out: []byte{1, 2, 3},
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
@@ -1190,8 +1170,7 @@ func TestSetChain(t *testing.T) {
 					in: &chain.Block{
 						Hash: []byte{1, 2, 3},
 					},
-					out:   []byte{1, 2, 3},
-					times: 1,
+					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
@@ -1199,8 +1178,7 @@ func TestSetChain(t *testing.T) {
 						Prevhash: []byte{1, 2, 3},
 						Target:   []byte{2, 3, 4},
 					},
-					out:   []byte{2, 3, 4},
-					times: 1,
+					out: []byte{2, 3, 4},
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
@@ -1214,7 +1192,7 @@ func TestSetChain(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			for _, call := range c.mockHashCalls {
-				mockHasher.EXPECT().Hash(call.in).Return(call.out).Times(call.times)
+				mockHasher.EXPECT().Hash(call.in).Return(call.out)
 			}
 
 			mockMiner.EXPECT().SetTarget(gomock.Any()).Times(c.mockMinerCalls.numSetTarget)

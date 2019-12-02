@@ -23,8 +23,7 @@ func TestMine(t *testing.T) {
 	}
 
 	type mockHashCall struct {
-		out   []byte
-		times int
+		out []byte
 	}
 
 	type expected struct {
@@ -45,8 +44,7 @@ func TestMine(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   []byte{123, 234},
-					times: 1,
+					out: []byte{123, 234},
 				},
 			},
 			expected: expected{
@@ -61,16 +59,13 @@ func TestMine(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   []byte{123, 234, 1},
-					times: 1,
+					out: []byte{123, 234, 1},
 				},
 				{
-					out:   []byte{123, 234, 123},
-					times: 1,
+					out: []byte{123, 234, 123},
 				},
 				{
-					out:   []byte{123, 234},
-					times: 1,
+					out: []byte{123, 234},
 				},
 			},
 			expected: expected{
@@ -85,16 +80,13 @@ func TestMine(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   []byte{123, 233},
-					times: 1,
+					out: []byte{123, 233},
 				},
 				{
-					out:   []byte{51, 36, 201, 123, 233},
-					times: 1,
+					out: []byte{51, 36, 201, 123, 233},
 				},
 				{
-					out:   []byte{123, 235},
-					times: 1,
+					out: []byte{123, 235},
 				},
 			},
 			expected: expected{
@@ -109,24 +101,19 @@ func TestMine(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   []byte{5, 132, 99, 80, 1},
-					times: 1,
+					out: []byte{5, 132, 99, 80, 1},
 				},
 				{
-					out:   []byte{35, 232, 59, 89, 1},
-					times: 1,
+					out: []byte{35, 232, 59, 89, 1},
 				},
 				{
-					out:   []byte{123, 235},
-					times: 1,
+					out: []byte{123, 235},
 				},
 				{
-					out:   []byte{123, 236},
-					times: 1,
+					out: []byte{123, 236},
 				},
 				{
-					out:   []byte{123, 237},
-					times: 1,
+					out: []byte{123, 237},
 				},
 			},
 			expected: expected{
@@ -141,24 +128,19 @@ func TestMine(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{
 				{
-					out:   []byte{123, 234},
-					times: 1,
+					out: []byte{123, 234},
 				},
 				{
-					out:   []byte{123, 233},
-					times: 1,
+					out: []byte{123, 233},
 				},
 				{
-					out:   []byte{0},
-					times: 1,
+					out: []byte{0},
 				},
 				{
-					out:   []byte{5},
-					times: 1,
+					out: []byte{5},
 				},
 				{
-					out:   []byte{25},
-					times: 1,
+					out: []byte{25},
 				},
 			},
 			expected: expected{
@@ -183,7 +165,7 @@ func TestMine(t *testing.T) {
 							}
 
 							return out
-						}).Times(call.times)
+						})
 				}(n == len(c.mockHashCalls)-1, call.out)
 			}
 
