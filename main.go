@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -20,6 +19,19 @@ import (
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
 	"google.golang.org/grpc"
 )
+
+const ascii = `
+  ____  __     __             
+ / __ \/ /    / /  ___  __ __ 
+/ /_/ / _ \  / _ \/ _ \/ // / 
+\____/_//_/ /_.__/\___/\_, /_
+                      /___/|/ 
+    __                 ____              __            __   _                            _          
+   / /  ___ _______   /  _/ ___  ___    / /  ___  ___ / /  (_)__  ___    ___  ___  ___  (_)__       
+  / _ \/ -_) __/ -_) _/ /  / _ \/ _ \  / _ \/ _ \(_-</ _ \/ / _ \/ _ \  / _ \/ _ \/ _ \/ / _ \_  _  _ 
+ /_//_/\__/_/  \__/ /___/  \_, /\___/ /_//_/\_,_/___/_//_/_/_//_/\_, /  \_,_/\_, /\_,_/_/_//_(_)(_)(_)
+                          /___/                                 /___/       /___/                   
+`
 
 // InitialExpectedHashrate is the seed of how many hashes are possible per second.
 // The variable set by it is overridden by real data once it comes through.
@@ -68,11 +80,7 @@ func main() {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if ascii, err := ioutil.ReadFile("./assets/ascii.txt"); err != nil {
-		log.Fatal(err)
-	} else {
-		fmt.Println(string(ascii))
-	}
+	fmt.Println(ascii)
 
 	_, port, err := net.SplitHostPort(addr)
 	if err != nil {
