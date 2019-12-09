@@ -12,7 +12,7 @@ import (
 )
 
 func (n *node) periodicDiscoverPeers(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
 	n.discoverPeers(ctx)
@@ -41,8 +41,6 @@ func (n *node) discoverPeers(ctx context.Context) {
 	for _, peer := range n.peers {
 		peerAddrs[peer.GetServerAddr()] = true
 	}
-
-	// log.Println(peerAddrs)
 
 	unknocked := make(map[string]bool)
 	for _, door := range n.knownAddrs.ReadAll() {
@@ -112,6 +110,11 @@ func (n *node) discoverPeers(ctx context.Context) {
 
 			n.appendAddrs(resp.GetKnownAddrs())
 		}(door)
+	}
+
+	log.Println("peers:")
+	for _, p := range n.peers {
+		log.Println(p.GetServerAddr())
 	}
 
 	wg.Wait()
