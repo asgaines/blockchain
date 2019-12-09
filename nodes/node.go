@@ -44,7 +44,7 @@ func NewNode(c *chain.Chain, miners []mining.Miner, pubkey string, poolID int, m
 		hasher:            hasher,
 	}
 
-	// n.appendAddrs(n.getSeedAddrs())
+	n.appendAddrs(n.getSeedAddrs())
 
 	f, err := os.OpenFile(filesPrefix+"_blocks.tsv", os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -102,11 +102,11 @@ func (n *node) Run(ctx context.Context) {
 
 	var wg sync.WaitGroup
 
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// 	go n.periodicDiscoverPeers(ctx)
-	// }()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		go n.periodicDiscoverPeers(ctx)
+	}()
 
 	wg.Add(1)
 	go func() {

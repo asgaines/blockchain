@@ -31,7 +31,6 @@ func (n *node) mine(ctx context.Context) {
 	mergedConveyors := n.mergeConveyors(conveyors...)
 
 	for minedBlock := range mergedConveyors {
-		log.Println("got a solve from ID %d", minedBlock.ID)
 		chain := n.chain.WithBlock(minedBlock.Block)
 		if overridden := n.setChain(chain, true); !overridden {
 			log.Fatal("solving a block did not successfully lead to chain override")
@@ -87,21 +86,18 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 				log.Println(err)
 			}
 
-			log.Printf("avg dur per block: %vs", actualAvgBlockDur.Seconds())
-
 			if _, err := n.statsF.Write([]byte(fmt.Sprintf("%v\t%v\n", actualAvgBlockDur.Seconds(), n.difficulty))); err != nil {
 				log.Printf("could not write to file: %s", err)
 			}
 
 			difficulty := n.calcDifficulty(actualAvgBlockDur, n.difficulty)
-			log.Printf("new difficulty: %v", difficulty)
 			n.difficulty = difficulty
-			fmt.Println()
+
 			n.updateTarget(difficulty)
 		}
 
 		n.clearTxs()
-		// n.propagateChain()
+		n.propagateChain()
 
 		return true
 	}
@@ -171,24 +167,21 @@ func (n *node) getRangeAvgBlockDur(c *chain.Chain, recalcPeriod int) (time.Durat
 	if err != nil {
 		return 0, err
 	}
-	log.Printf("actual time: %vs", actualRangeDur.Seconds())
 
 	return actualRangeDur / time.Duration(recalcPeriod), nil
 }
 
 func (n *node) calcDifficulty(actualDurPerBlock time.Duration, currDifficulty float64) float64 {
-	// log.Printf("actual dur per block: %v", actualDurPerBlock)
 	adjustment := float64(n.targetDurPerBlock) / float64(actualDurPerBlock)
-	log.Printf("unconfined difficulty adjustment: %v", adjustment)
 	adjustment = n.confine(adjustment)
 
-	// log.Printf("%v (adjustment)", adjustment)
 	newDifficulty := currDifficulty * adjustment
 
 	return newDifficulty
 }
 
-// confine restricts the difficulty adjustment shift to a factor of +/-4 to protect against anomalous fluctuations
+// confine restricts the difficulty adjustment shift to a factor of +/-4 to protect
+// against anomalous fluctuations
 func (n *node) confine(adjustment float64) float64 {
 	confined := math.Max(1/DiffConfineFactor, adjustment)
 	confined = math.Min(DiffConfineFactor, confined)
