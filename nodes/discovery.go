@@ -30,27 +30,16 @@ func (n *node) periodicDiscoverPeers(ctx context.Context) {
 }
 
 func (n *node) discoverPeers(ctx context.Context) {
+	log.Printf("Discovering peers. Current peers: %v. Known addrs: %v", n.peers, n.knownAddrs)
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
 
-	if n.knownAddrs.Len() <= 0 {
+	if n.knownAddrs.Len() < 1 {
 		n.appendAddrs(n.getSeedAddrs())
 	}
 
-	peerAddrs := make(map[string]bool, len(n.peers))
-	for _, peer := range n.peers {
-		peerAddrs[peer.GetServerAddr()] = true
-	}
-
-	unknocked := make(map[string]bool)
+	wg.Add(n.knownAddrs.Len())
 	for _, door := range n.knownAddrs.ReadAll() {
-		if _, ok := peerAddrs[door]; !ok {
-			unknocked[door] = true
-		}
-	}
-
-	wg.Add(len(unknocked))
-	for door := range unknocked {
 		go func(door string) {
 			defer wg.Done()
 
@@ -65,15 +54,16 @@ func (n *node) discoverPeers(ctx context.Context) {
 
 			resp, err := client.Discover(ctx, &pb.DiscoverRequest{
 				NodeID:     n.getID().ToProto(),
-				ServerPort: int32(n.serverPort),
+				ReturnAddr: n.returnAddr,
 				KnownAddrs: n.getKnownAddrsExcept([]string{door}),
 			})
 			if err != nil {
-				// log.Printf("no answer from %s: %s", door, err)
 				n.knownAddrs.RemoveOne(door)
 				conn.Close()
 				return
 			}
+
+			log.Printf("received known addrs: %v", resp.GetKnownAddrs())
 
 			nodeID := NodeIDFrom(resp.GetNodeID())
 			if nodeID == n.getID() {
@@ -89,7 +79,9 @@ func (n *node) discoverPeers(ctx context.Context) {
 			if _, ok := n.peers[nodeID]; ok {
 				// n.knownAddrs.RemoveOne(door)
 				// log.Println(n.knownAddrs.ReadAll())
-				conn.Close()
+				if err := conn.Close(); err != nil {
+					log.Println(err)
+				}
 				return
 			}
 
@@ -105,18 +97,14 @@ func (n *node) discoverPeers(ctx context.Context) {
 				log.Printf("added new peer: %s", door)
 				fmt.Println(n.peers)
 			} else {
-				conn.Close()
+				if err := conn.Close(); err != nil {
+					log.Println(err)
+				}
 			}
 
 			n.appendAddrs(resp.GetKnownAddrs())
 		}(door)
 	}
 
-	log.Println("peers:")
-	for _, p := range n.peers {
-		log.Println(p.GetServerAddr())
-	}
-
 	wg.Wait()
-	// log.Println("known addrs:", n.knownAddrs.ReadAll())
 }

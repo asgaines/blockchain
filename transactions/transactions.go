@@ -2,7 +2,6 @@ package transactions
 
 import (
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
 
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
@@ -18,9 +17,5 @@ func SetHash(tx *pb.Tx) {
 
 	h := sha256.New()
 	h.Write([]byte(payload))
-	hash := h.Sum(nil)
-
-	top8 := hash[:8]
-
-	tx.Hash = binary.BigEndian.Uint64(top8)
+	tx.Hash = h.Sum(nil)
 }

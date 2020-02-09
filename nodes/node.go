@@ -26,7 +26,7 @@ type Node interface {
 
 // NewNode instantiates a Node; a blockchain client for mining
 // and propagating new blocks/transactions
-func NewNode(c *chain.Chain, miners []mining.Miner, pubkey string, poolID int, minPeers int, maxPeers int, targetDurPerBlock time.Duration, recalcPeriod int, serverPort int, speed mining.HashSpeed, filesPrefix string, difficulty float64, hasher chain.Hasher) Node {
+func NewNode(c *chain.Chain, miners []mining.Miner, pubkey string, poolID int, minPeers int, maxPeers int, targetDurPerBlock time.Duration, recalcPeriod int, returnAddr string, speed mining.HashSpeed, filesPrefix string, difficulty float64, hasher chain.Hasher) Node {
 	n := node{
 		chain:             c,
 		miners:            miners,
@@ -38,10 +38,11 @@ func NewNode(c *chain.Chain, miners []mining.Miner, pubkey string, poolID int, m
 		maxPeers:          maxPeers,
 		targetDurPerBlock: targetDurPerBlock,
 		recalcPeriod:      recalcPeriod,
-		serverPort:        serverPort,
+		returnAddr:        returnAddr,
 		filesPrefix:       filesPrefix,
 		difficulty:        difficulty,
 		hasher:            hasher,
+		extraAddrs:        os.Getenv("BLOCKCHAIN_ADDRS"),
 	}
 
 	n.appendAddrs(n.getSeedAddrs())
@@ -79,12 +80,13 @@ type node struct {
 	chain             *chain.Chain
 	targetDurPerBlock time.Duration
 	recalcPeriod      int
-	serverPort        int
+	returnAddr        string
 	dursF             *os.File
 	statsF            *os.File
 	filesPrefix       string
 	difficulty        float64
 	hasher            chain.Hasher
+	extraAddrs        string
 }
 
 type nodeID struct {
@@ -133,22 +135,24 @@ func (n *node) close() {
 	}
 }
 
-func (n node) propagateTx(tx *pb.Tx, except NodeID) {
+func (n node) propagateChain(except map[NodeID]bool) {
 	for nodeID, p := range n.peers {
-		if nodeID != except {
-			if err := p.ShareTx(tx, n.getID(), int32(n.serverPort)); err != nil {
+		if _, ok := except[nodeID]; !ok {
+			log.Printf("Propagation to %v\n\n", nodeID)
+			if err := p.ShareChain(n.chain, n.getID(), n.returnAddr); err != nil {
 				log.Println(err)
+				delete(n.peers, nodeID)
 			}
 		}
 	}
 }
 
-func (n node) propagateChain() {
+func (n node) propagateTx(tx *pb.Tx, except NodeID) {
 	for nodeID, p := range n.peers {
-		log.Printf("Propagation to %v\n\n", nodeID)
-		if err := p.ShareChain(n.chain, n.getID(), int32(n.serverPort)); err != nil {
-			log.Println(err)
-			delete(n.peers, nodeID)
+		if nodeID != except {
+			if err := p.ShareTx(tx, n.getID(), n.returnAddr); err != nil {
+				log.Println(err)
+			}
 		}
 	}
 }
@@ -222,8 +226,7 @@ func (n *node) getSeedAddrs() []string {
 		addrs = append(addrs, addr)
 	}
 
-	extraAddrs := os.Getenv("BLOCKCHAIN_ADDRS")
-	for _, addr := range strings.Split(extraAddrs, ",") {
+	for _, addr := range strings.Split(n.extraAddrs, ",") {
 		addrs = append(addrs, addr)
 	}
 

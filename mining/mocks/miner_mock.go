@@ -7,6 +7,7 @@ package mocks
 import (
 	context "context"
 	chain "github.com/asgaines/blockchain/chain"
+	mining "github.com/asgaines/blockchain/mining"
 	blockchain "github.com/asgaines/blockchain/protogo/blockchain"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
@@ -60,7 +61,7 @@ func (mr *MockMinerMockRecorder) ClearTxs() *gomock.Call {
 }
 
 // Mine mocks base method
-func (m *MockMiner) Mine(arg0 context.Context, arg1 chan<- *chain.Block) {
+func (m *MockMiner) Mine(arg0 context.Context, arg1 chan<- mining.BlockReport) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Mine", arg0, arg1)
 }

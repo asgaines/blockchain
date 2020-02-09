@@ -154,7 +154,7 @@ func TestMine(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			conveyor := make(chan *chain.Block)
+			conveyor := make(chan BlockReport)
 
 			for n, call := range c.mockHashCalls {
 				func(lastCall bool, out []byte) {
@@ -179,7 +179,7 @@ func TestMine(t *testing.T) {
 
 			solves := []*chain.Block{}
 			for b := range conveyor {
-				solves = append(solves, b)
+				solves = append(solves, b.Block)
 			}
 
 			if len(solves) != c.expected.numSolves {

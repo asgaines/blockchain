@@ -15,14 +15,14 @@ import (
 )
 
 func (n *node) Discover(ctx context.Context, r *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
-	peerAddr := n.getPeerAddr(ctx, r.ServerPort)
+	n.appendAddrs(append(r.GetKnownAddrs(), r.GetReturnAddr()))
 
-	n.appendAddrs(append(r.GetKnownAddrs(), peerAddr))
+	log.Printf("I was discovered and responded with known addrs: %v", n.getKnownAddrsExcept([]string{r.GetReturnAddr()}))
 
 	return &pb.DiscoverResponse{
 		Ok:         true,
 		NodeID:     n.getID().ToProto(),
-		KnownAddrs: n.getKnownAddrsExcept([]string{peerAddr}),
+		KnownAddrs: n.getKnownAddrsExcept([]string{r.GetReturnAddr()}),
 	}, nil
 }
 
@@ -30,7 +30,13 @@ func (n *node) ShareChain(ctx context.Context, r *pb.ShareChainRequest) (*pb.Sha
 	accepted := n.setChain(&chain.Chain{
 		Pbc: r.Chain,
 	}, false)
-	//log.Printf("Did I accept peer chain? %v\n", accepted)
+
+	if accepted {
+		n.propagateChain(map[NodeID]bool{
+			NodeIDFrom(r.GetNodeID()): true,
+		})
+	}
+
 	return &pb.ShareChainResponse{Accepted: accepted}, nil
 }
 
@@ -39,7 +45,7 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 		r.Tx.Timestamp = ptypes.TimestampNow()
 	}
 
-	if r.Tx.GetHash() == 0 {
+	if r.Tx.GetHash() == nil {
 		transactions.SetHash(r.Tx)
 	}
 
@@ -68,6 +74,11 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 	return &pb.ShareTxResponse{Accepted: true}, nil
 }
 
+// getPeerAddr is a remnant of an attempt to discover requesting peer's
+// ip address. Current methods for discovering ip are not reliable within Docker,
+// as the ip is reported to the Docker gateway proxy.
+// This means connections are reliant upon the requesting peer providing their own correct
+// return address
 func (n *node) getPeerAddr(ctx context.Context, port int32) string {
 	gpeer, ok := grpcpeer.FromContext(ctx)
 	if !ok {

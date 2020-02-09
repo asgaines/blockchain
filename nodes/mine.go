@@ -28,13 +28,13 @@ func (n *node) mine(ctx context.Context) {
 		go miner.Mine(ctx, conveyor)
 	}
 
-	mergedConveyors := n.mergeConveyors(conveyors...)
-
-	for minedBlock := range mergedConveyors {
-		chain := n.chain.WithBlock(minedBlock.Block)
+	for mineReport := range n.mergeConveyors(conveyors...) {
+		log.Println("SUCCESSFULLY SOLVED NEW BLOCK")
+		chain := n.chain.WithBlock(mineReport.Block)
 		if overridden := n.setChain(chain, true); !overridden {
-			log.Fatal("solving a block did not successfully lead to chain override")
+			log.Fatal("solving a block did not successfully lead to own chain override")
 		}
+		n.propagateChain(nil)
 	}
 }
 
@@ -77,6 +77,7 @@ func (n *node) logBlock(block *chain.Block) {
 func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 	if (trusted || n.IsValid(chain)) && chain.Length() > n.chain.Length() {
 		n.chain = chain
+		n.updatePrevBlock(chain.LastLink())
 
 		n.logBlock(chain.LastLink())
 
@@ -90,14 +91,12 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 				log.Printf("could not write to file: %s", err)
 			}
 
-			difficulty := n.calcDifficulty(actualAvgBlockDur, n.difficulty)
-			n.difficulty = difficulty
+			n.difficulty = n.calcDifficulty(actualAvgBlockDur, n.difficulty)
 
-			n.updateTarget(difficulty)
+			n.updateTarget(n.difficulty)
 		}
 
 		n.clearTxs()
-		n.propagateChain()
 
 		return true
 	}
@@ -112,9 +111,15 @@ func (n *node) updateTarget(difficulty float64) {
 	}
 }
 
+func (n *node) updatePrevBlock(block *chain.Block) {
+	for _, miner := range n.miners {
+		miner.SetPrevBlock(block)
+	}
+}
+
 func (n *node) clearTxs() {
 	for _, miner := range n.miners {
-		miner.ClearTxs()
+		miner.ResetTxs()
 	}
 }
 

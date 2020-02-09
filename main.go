@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -43,7 +42,8 @@ const InitialExpectedHashrate = float64(700000)
 func main() {
 	var pubkey string
 	var poolID int
-	var addr string
+	var bindAddr string
+	var returnAddr string
 	var minPeers int
 	var maxPeers int
 	var targetDurPerBlock time.Duration
@@ -53,7 +53,8 @@ func main() {
 	var filesPrefix string
 
 	flag.IntVar(&poolID, "poolid", 0, "The ID for a node within a single miner's pool (nodes with same pubkey).")
-	flag.StringVar(&addr, "addr", ":20403", "Address to listen on")
+	flag.StringVar(&bindAddr, "bindAddr", ":20403", "Address to listen on")
+	flag.StringVar(&returnAddr, "returnAddr", "", "External address (host:port) for peers to return connections")
 	flag.IntVar(&minPeers, "minpeers", 5, "The minimum number of peers to aim for; any fewer will trigger a peer discovery event")
 	flag.IntVar(&maxPeers, "maxpeers", 25, "The maximum number of peers to seed out to")
 	flag.DurationVar(&targetDurPerBlock, "targetdur", 10*time.Minute, "The desired amount of time between block mining events; controls the difficulty of the mining")
@@ -65,10 +66,17 @@ func main() {
 	flag.Parse()
 
 	pubkey = os.Getenv("BLOCKCHAIN_PUBKEY")
-
 	if pubkey == "" {
 		flag.Usage()
-		log.Fatal("pubkey missing from environment. Please set $BLOCKCHAIN_PUBKEY env variable.")
+		log.Fatal("pubkey missing from environment. Please set BLOCKCHAIN_PUBKEY env variable.")
+	}
+
+	if returnAddr == "" {
+		flag.Usage()
+		log.Fatal("please include returnAddr (external host:port) for peers to connect back to your node")
+	} else if _, _, err := net.SplitHostPort(returnAddr); err != nil {
+		flag.Usage()
+		log.Fatal("invalid returnAddr")
 	}
 
 	speed, err := mining.ToSpeed(speedArg)
@@ -82,24 +90,14 @@ func main() {
 
 	fmt.Println(ascii)
 
-	_, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		log.Fatalf("invalid addr: %s", addr)
-	}
-
-	portN, err := strconv.Atoi(port)
-	if err != nil {
-		log.Fatal(err)
+	if _, _, err := net.SplitHostPort(bindAddr); err != nil {
+		log.Fatalf("invalid bindAddr: %s", bindAddr)
 	}
 
 	hasher := chain.NewHasher()
-
 	filesPrefix = fmt.Sprintf("%s_%dp_%dm", targetDurPerBlock, recalcPeriod, numMiners)
-
 	c := chain.InitChain(hasher, filesPrefix)
-
 	difficulty := InitialExpectedHashrate * targetDurPerBlock.Seconds()
-
 	miners := make([]mining.Miner, 0, numMiners)
 
 	for n := 0; n < numMiners; n++ {
@@ -123,7 +121,7 @@ func main() {
 		maxPeers,
 		targetDurPerBlock,
 		recalcPeriod,
-		portN,
+		returnAddr,
 		speed,
 		filesPrefix,
 		difficulty,
@@ -139,14 +137,14 @@ func main() {
 	gsrv := grpc.NewServer()
 	pb.RegisterNodeServer(gsrv, node)
 
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", bindAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	wg.Add(1)
 	go func() {
-		log.Printf("gRPC server listening on %s", port)
+		log.Printf("gRPC server listening on %s", bindAddr)
 		if err := gsrv.Serve(lis); err != nil {
 			log.Printf("gRPC server: %v", err)
 		}

@@ -26,17 +26,12 @@ func (h *hasher) Hash(b *Block) []byte {
 	payload += b.Pubkey
 
 	for _, tx := range b.Txs {
-		payload += strconv.FormatUint(tx.Hash, 10)
+		payload += string(tx.Hash)
 	}
 
 	hh := sha256.New()
 	hh.Write([]byte(payload))
 	hb := hh.Sum(nil)
-
-	// Only take most significant 8 bytes
-	// A full implementation uses a 256 bit number,
-	// but limiting here to Go builtin type for ease
-	// top8 := hb[:8]
 
 	// return new(big.Int).SetBytes(hb) //binary.BigEndian.Uint64(top8)
 	return hb

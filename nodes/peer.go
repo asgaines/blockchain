@@ -11,16 +11,15 @@ import (
 
 // Peer manages a client connection to a Node running at a different address
 type Peer interface {
-	ShareChain(c *chain.Chain, nodeID NodeID, serverPort int32) error
-	ShareTx(tx *pb.Tx, nodeID NodeID, serverPort int32) error
-	GetServerAddr() string
+	ShareChain(c *chain.Chain, nodeID NodeID, returnAddr string) error
+	ShareTx(tx *pb.Tx, nodeID NodeID, returnAddr string) error
 	Close() error
 }
 
-func NewPeer(ctx context.Context, serverAddr string, client pb.NodeClient, conn *grpc.ClientConn) Peer {
+func NewPeer(ctx context.Context, returnAddr string, client pb.NodeClient, conn *grpc.ClientConn) Peer {
 	return &peer{
 		ctx:        ctx,
-		serverAddr: serverAddr,
+		returnAddr: returnAddr,
 		client:     client,
 		conn:       conn,
 	}
@@ -28,33 +27,35 @@ func NewPeer(ctx context.Context, serverAddr string, client pb.NodeClient, conn 
 
 type peer struct {
 	ctx        context.Context
-	serverAddr string
+	returnAddr string
 	client     pb.NodeClient
 	conn       *grpc.ClientConn
 }
 
-func (p *peer) ShareChain(c *chain.Chain, nodeID NodeID, serverPort int32) error {
+func (p *peer) ShareChain(c *chain.Chain, nodeID NodeID, returnAddr string) error {
 	resp, err := p.client.ShareChain(p.ctx, &pb.ShareChainRequest{
 		Chain:      c.ToProto(),
 		NodeID:     nodeID.ToProto(),
-		ServerPort: serverPort,
+		ReturnAddr: returnAddr,
 	})
 	if err != nil {
 		return err
 	}
 
 	if !resp.GetAccepted() {
-		log.Println("peer did not accept chain")
+		log.Println("PEER DID NOT ACCEPT CHAIN")
+	} else {
+		log.Println("PEER ACCEPTED CHAIN")
 	}
 
 	return nil
 }
 
-func (p *peer) ShareTx(tx *pb.Tx, nodeID NodeID, serverPort int32) error {
+func (p *peer) ShareTx(tx *pb.Tx, nodeID NodeID, returnAddr string) error {
 	resp, err := p.client.ShareTx(p.ctx, &pb.ShareTxRequest{
 		Tx:         tx,
 		NodeID:     nodeID.ToProto(),
-		ServerPort: serverPort,
+		ReturnAddr: returnAddr,
 	})
 	if err != nil {
 		return err
@@ -65,10 +66,6 @@ func (p *peer) ShareTx(tx *pb.Tx, nodeID NodeID, serverPort int32) error {
 	}
 
 	return nil
-}
-
-func (p *peer) GetServerAddr() string {
-	return p.serverAddr
 }
 
 func (p *peer) Close() error {

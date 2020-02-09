@@ -35,7 +35,7 @@ message Tx {
 	string for = 3;
 	string from = 4;
     string to = 5;
-    uint64 hash = 6;
+	bytes hash = 6;
 }
 
 service Node {
@@ -46,9 +46,10 @@ service Node {
 
 message DiscoverRequest {
     NodeID nodeID = 1;
-    // servePort is the port that the client's server is listening on.
-    // It allows the pinged server to reach back out to share their data.
-    int32 serverPort = 2;
+    // returnAddr is the path back to the requesting peer so the responding peer
+    // can connect back. Current methods for discovering request ip not reliable within
+    // Docker container
+    string returnAddr = 2;
     // peerAddrs is the collection of addresses of known nodes.
     // They can be used to further discover more peers
     repeated string knownAddrs = 3;
@@ -67,9 +68,10 @@ message DiscoverResponse {
 message ShareChainRequest {
     NodeID nodeID = 1;
     Chain chain = 2;
-    // servePort is the port that the client's server is listening on.
-    // It allows the pinged server to reach back out to share their data.
-    int32 serverPort = 3;
+    // returnAddr is the path back to the requesting peer so the responding peer
+    // can connect back. Current methods for discovering request ip not reliable within
+    // Docker container
+    string returnAddr = 3;
 }
 
 message ShareChainResponse {
@@ -79,9 +81,10 @@ message ShareChainResponse {
 message ShareTxRequest {
     NodeID nodeID = 1;
     Tx tx = 2;
-    // servePort is the port that the client's server is listening on.
-    // It allows the pinged server to reach back out to share their data.
-    int32 serverPort = 3;
+    // returnAddr is the path back to the requesting peer so the responding peer
+    // can connect back. Current methods for discovering request ip not reliable within
+    // Docker container
+    string returnAddr = 3;
 }
 
 message ShareTxResponse {

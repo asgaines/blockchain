@@ -9,6 +9,7 @@ import (
 
 	"github.com/asgaines/blockchain/chain"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
+	"github.com/golang/protobuf/ptypes"
 )
 
 // MaxTarget is the highest possible target value (lowest possible difficulty)
@@ -28,7 +29,7 @@ type Miner interface {
 	AddTx(tx *pb.Tx)
 	SetPrevBlock(block *chain.Block)
 	SetTarget(difficulty float64) error
-	ClearTxs()
+	ResetTxs()
 }
 
 type BlockReport struct {
@@ -45,6 +46,8 @@ func NewMiner(ID int, prevBlock *chain.Block, pubkey string, difficulty float64,
 		hashSpeed: hashSpeed,
 		hasher:    hasher,
 	}
+
+	m.ResetTxs()
 
 	if err := m.SetTarget(difficulty); err != nil {
 		log.Fatal(err)
@@ -96,14 +99,15 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 		hb := new(big.Int).SetBytes(candidate.Hash)
 		tb := new(big.Int).SetBytes(m.target)
 
+		// Block is considered solved if the generated hash is less than or equal
+		// to the target value
 		cmp := hb.Cmp(tb)
 		if solved := cmp == 0 || cmp == -1; solved {
 			conveyor <- BlockReport{
 				ID:    m.ID,
 				Block: candidate,
 			}
-			m.prevBlock = candidate
-			m.nonce = 0
+			m.SetPrevBlock(candidate)
 		} else {
 			m.nonce++
 		}
@@ -112,6 +116,7 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 
 func (m *miner) SetPrevBlock(block *chain.Block) {
 	m.prevBlock = block
+	m.nonce = 0
 }
 
 func (m *miner) SetTarget(difficulty float64) error {
@@ -138,8 +143,17 @@ func (m *miner) AddTx(tx *pb.Tx) {
 	m.txpool = append(m.txpool, tx)
 }
 
-func (m *miner) ClearTxs() {
+func (m *miner) ResetTxs() {
 	// TODO: ensure ALL txs in txpool are in new chain
 	// If not, keep orphans in txpool
-	m.txpool = []*pb.Tx{}
+	m.txpool = []*pb.Tx{
+		{
+			Timestamp: ptypes.TimestampNow(),
+			Value:     100,
+			For:       "Block solve reward",
+			From:      "", // From thin air...
+			To:        m.pubkey,
+			Hash:      nil,
+		},
+	}
 }

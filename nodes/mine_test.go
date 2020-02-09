@@ -9,6 +9,7 @@ import (
 
 	"github.com/asgaines/blockchain/chain"
 	"github.com/asgaines/blockchain/chain/mocks"
+	"github.com/asgaines/blockchain/mining"
 	mm "github.com/asgaines/blockchain/mining/mocks"
 	"github.com/asgaines/blockchain/protogo/blockchain"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
@@ -35,6 +36,9 @@ func TestMine(t *testing.T) {
 		}
 		setTarget struct {
 			difficulties []float64
+		}
+		setPrevBlock struct {
+			times int
 		}
 		clearTxs struct {
 			times int
@@ -86,6 +90,11 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{100},
 				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 1,
+				},
 				clearTxs: struct {
 					times int
 				}{
@@ -130,6 +139,11 @@ func TestMine(t *testing.T) {
 					difficulties []float64
 				}{
 					difficulties: []float64{200},
+				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 1,
 				},
 				clearTxs: struct {
 					times int
@@ -186,6 +200,11 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{97.71986970715871},
 				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 3,
+				},
 				clearTxs: struct {
 					times int
 				}{
@@ -240,6 +259,11 @@ func TestMine(t *testing.T) {
 					difficulties []float64
 				}{
 					difficulties: []float64{100.67114093993514},
+				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 3,
 				},
 				clearTxs: struct {
 					times int
@@ -296,6 +320,11 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{100.67114093993514},
 				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 3,
+				},
 				clearTxs: struct {
 					times int
 				}{
@@ -350,6 +379,11 @@ func TestMine(t *testing.T) {
 					difficulties []float64
 				}{
 					difficulties: []float64{200},
+				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 3,
 				},
 				clearTxs: struct {
 					times int
@@ -414,6 +448,11 @@ func TestMine(t *testing.T) {
 						(100 * (float64(2) / float64(3))) * 2,
 					},
 				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 4,
+				},
 				clearTxs: struct {
 					times int
 				}{
@@ -461,6 +500,11 @@ func TestMine(t *testing.T) {
 					difficulties: []float64{
 						2000,
 					},
+				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 1,
 				},
 				clearTxs: struct {
 					times int
@@ -538,6 +582,11 @@ func TestMine(t *testing.T) {
 						666 + (float64(2) / float64(3)),
 					},
 				},
+				setPrevBlock: struct {
+					times int
+				}{
+					times: 5,
+				},
 				clearTxs: struct {
 					times int
 				}{
@@ -555,11 +604,14 @@ func TestMine(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
 			mockMiner.EXPECT().Mine(ctx, gomock.Any()).
-				Do(func(ctx context.Context, conveyor chan<- *chain.Block) {
+				Do(func(ctx context.Context, conveyor chan<- mining.BlockReport) {
 					defer cancel()
 
 					for _, block := range c.mockCalls.mine.blocks {
-						conveyor <- block
+						conveyor <- mining.BlockReport{
+							Block: block,
+							ID:    5,
+						}
 					}
 
 					close(conveyor)
@@ -567,6 +619,7 @@ func TestMine(t *testing.T) {
 			for _, difficulty := range c.mockCalls.setTarget.difficulties {
 				mockMiner.EXPECT().SetTarget(difficulty)
 			}
+			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockCalls.setPrevBlock.times)
 			mockMiner.EXPECT().ClearTxs().Times(c.mockCalls.clearTxs.times)
 
 			n := &node{
@@ -574,7 +627,7 @@ func TestMine(t *testing.T) {
 				targetDurPerBlock: c.nodeSetup.targetDurPerBlock,
 				recalcPeriod:      c.nodeSetup.recalcPeriod,
 				difficulty:        c.nodeSetup.difficulty,
-				miner:             mockMiner,
+				miners:            []mining.Miner{mockMiner},
 			}
 
 			n.mine(ctx)
@@ -805,9 +858,15 @@ func TestSetChain(t *testing.T) {
 		out []byte
 	}
 
+	type setPrevBlockCall struct {
+		numCalls int
+		block    *chain.Block
+	}
+
 	type mockMinerCalls struct {
-		numClearTxs  int
-		numSetTarget int
+		numClearTxs     int
+		numSetTarget    int
+		numSetPrevBlock int
 	}
 
 	cases := []struct {
@@ -846,8 +905,9 @@ func TestSetChain(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{},
 			mockMinerCalls: mockMinerCalls{
-				numClearTxs:  0,
-				numSetTarget: 0,
+				numSetPrevBlock: 0,
+				numClearTxs:     0,
+				numSetTarget:    0,
 			},
 			expectedReplace: false,
 		},
@@ -879,13 +939,14 @@ func TestSetChain(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{},
 			mockMinerCalls: mockMinerCalls{
-				numClearTxs:  0,
-				numSetTarget: 0,
+				numSetPrevBlock: 0,
+				numClearTxs:     0,
+				numSetTarget:    0,
 			},
 			expectedReplace: false,
 		},
 		{
-			name: "Valid chain of equal length replaces old chain",
+			name: "Valid chain of equal length does not replace old chain",
 			nodeSetup: nodeSetup{
 				chain: &chain.Chain{
 					Pbc: &pb.Chain{
@@ -930,8 +991,9 @@ func TestSetChain(t *testing.T) {
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numClearTxs:  0,
-				numSetTarget: 0,
+				numSetPrevBlock: 0,
+				numClearTxs:     0,
+				numSetTarget:    0,
 			},
 			expectedReplace: false,
 		},
@@ -981,8 +1043,9 @@ func TestSetChain(t *testing.T) {
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numClearTxs:  0,
-				numSetTarget: 0,
+				numSetPrevBlock: 0,
+				numClearTxs:     0,
+				numSetTarget:    0,
 			},
 			expectedReplace: false,
 		},
@@ -1034,8 +1097,9 @@ func TestSetChain(t *testing.T) {
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numClearTxs:  1,
-				numSetTarget: 1,
+				numSetPrevBlock: 1,
+				numClearTxs:     1,
+				numSetTarget:    1,
 			},
 			expectedReplace: true,
 		},
@@ -1129,8 +1193,9 @@ func TestSetChain(t *testing.T) {
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numClearTxs:  1,
-				numSetTarget: 1,
+				numSetPrevBlock: 1,
+				numClearTxs:     1,
+				numSetTarget:    1,
 			},
 			expectedReplace: true,
 		},
@@ -1182,8 +1247,9 @@ func TestSetChain(t *testing.T) {
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numClearTxs:  1,
-				numSetTarget: 0,
+				numSetPrevBlock: 1,
+				numClearTxs:     1,
+				numSetTarget:    0,
 			},
 			expectedReplace: true,
 		},
@@ -1195,13 +1261,14 @@ func TestSetChain(t *testing.T) {
 				mockHasher.EXPECT().Hash(call.in).Return(call.out)
 			}
 
+			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockMinerCalls.numSetPrevBlock)
 			mockMiner.EXPECT().SetTarget(gomock.Any()).Times(c.mockMinerCalls.numSetTarget)
 			mockMiner.EXPECT().ClearTxs().Times(c.mockMinerCalls.numClearTxs)
 
 			n := node{
 				chain:        c.nodeSetup.chain,
 				recalcPeriod: c.nodeSetup.recalcPeriod,
-				miner:        mockMiner,
+				miners:       []mining.Miner{mockMiner},
 				hasher:       mockHasher,
 			}
 
