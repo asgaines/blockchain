@@ -2,7 +2,7 @@ package chain
 
 import (
 	"crypto/sha256"
-	"strconv"
+	"encoding/binary"
 
 	"github.com/golang/protobuf/ptypes"
 )
@@ -19,16 +19,16 @@ func NewHasher() Hasher {
 }
 
 func (h *hasher) Hash(b *Block) []byte {
-	payload := ptypes.TimestampString(b.Timestamp)
-	payload += string(b.Prevhash)
-	payload += strconv.FormatUint(b.Nonce, 10)
-	payload += string(b.Target)
-	payload += string(b.MerkleRoot)
+	nonceB := make([]byte, 8)
+	binary.BigEndian.PutUint64(nonceB, b.Nonce)
 
-	hh := sha256.New()
-	hh.Write([]byte(payload))
-	hb := hh.Sum(nil)
+	headerB := []byte(ptypes.TimestampString(b.Timestamp))
+	headerB = append(headerB, b.Prevhash...)
+	headerB = append(headerB, nonceB...)
+	headerB = append(headerB, b.Target...)
+	headerB = append(headerB, b.MerkleRoot...)
 
-	// return new(big.Int).SetBytes(hb) //binary.BigEndian.Uint64(top8)
-	return hb
+	hb := sha256.Sum256(headerB)
+
+	return hb[:]
 }

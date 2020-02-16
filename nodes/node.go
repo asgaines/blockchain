@@ -121,6 +121,10 @@ func (n *node) Run(ctx context.Context) {
 		log.Fatal(err)
 	}
 
+	if !n.IsValid(c) {
+		c = chain.NewChain(n.hasher)
+	}
+
 	n.difficulty = diff
 	n.chain = c
 
