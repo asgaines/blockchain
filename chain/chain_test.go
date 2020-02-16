@@ -142,8 +142,8 @@ func TestGetCreditFor(t *testing.T) {
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "SteveHolt",
-									Value: 5.5,
+									Recipient: "SteveHolt",
+									Value:     5.5,
 								},
 							},
 						},
@@ -161,8 +161,8 @@ func TestGetCreditFor(t *testing.T) {
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "GeorgeMichael",
-									Value: 12.5,
+									Recipient: "GeorgeMichael",
+									Value:     12.5,
 								},
 							},
 						},
@@ -180,12 +180,12 @@ func TestGetCreditFor(t *testing.T) {
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "LucilleBluth",
-									Value: 12.5,
+									Recipient: "LucilleBluth",
+									Value:     12.5,
 								},
 								{
-									For:   "LucilleBluth",
-									Value: 100,
+									Recipient: "LucilleBluth",
+									Value:     100,
 								},
 							},
 						},
@@ -203,16 +203,16 @@ func TestGetCreditFor(t *testing.T) {
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "Rita",
-									Value: 70,
+									Recipient: "Rita",
+									Value:     70,
 								},
 							},
 						},
 						{
 							Txs: []*pb.Tx{
 								{
-									From:  "Rita",
-									Value: 50,
+									Sender: "Rita",
+									Value:  50,
 								},
 							},
 						},
@@ -230,16 +230,16 @@ func TestGetCreditFor(t *testing.T) {
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "MrF",
-									Value: 2.5,
+									Recipient: "MrF",
+									Value:     2.5,
 								},
 							},
 						},
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "MrF",
-									Value: 5,
+									Recipient: "MrF",
+									Value:     5,
 								},
 							},
 						},
@@ -257,40 +257,40 @@ func TestGetCreditFor(t *testing.T) {
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "LindsayBluth",
-									Value: 100,
+									Recipient: "LindsayBluth",
+									Value:     100,
 								},
 								{
-									For:   "DirtyEarsBill",
-									Value: 8,
-								},
-							},
-						},
-						{
-							Txs: []*pb.Tx{
-								{
-									For:   "LindsayBluth",
-									Value: 5,
+									Recipient: "DirtyEarsBill",
+									Value:     8,
 								},
 							},
 						},
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "Gob",
-									Value: 35,
+									Recipient: "LindsayBluth",
+									Value:     5,
 								},
 							},
 						},
 						{
 							Txs: []*pb.Tx{
 								{
-									For:   "Hermano",
-									Value: 7,
+									Recipient: "Gob",
+									Value:     35,
+								},
+							},
+						},
+						{
+							Txs: []*pb.Tx{
+								{
+									Recipient: "Hermano",
+									Value:     7,
 								},
 								{
-									From:  "LindsayBluth",
-									Value: 35,
+									Sender: "LindsayBluth",
+									Value:  35,
 								},
 							},
 						},

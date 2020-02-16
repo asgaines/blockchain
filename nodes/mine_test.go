@@ -620,7 +620,7 @@ func TestMine(t *testing.T) {
 				mockMiner.EXPECT().SetTarget(difficulty)
 			}
 			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockCalls.setPrevBlock.times)
-			mockMiner.EXPECT().ResetTxs().Times(c.mockCalls.clearTxs.times)
+			mockMiner.EXPECT().SetTxs(gomock.Any()).Times(c.mockCalls.clearTxs.times)
 
 			n := &node{
 				chain:             c.nodeSetup.chain,
@@ -680,11 +680,11 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:    12345,
-							Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
-							Pubkey:   "abc123",
-							Hash:     new(big.Int).SetUint64(13857702854592346750).Bytes(),
+							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
+							Nonce:      12345,
+							Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+							MerkleRoot: []byte{},
+							Hash:       new(big.Int).SetUint64(13857702854592346750).Bytes(),
 						},
 					},
 				},
@@ -704,11 +704,11 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:    12345,
-						Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
-						Pubkey:   "abc123",
-						Hash:     new(big.Int).SetUint64(13857702854592346750).Bytes(),
+						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
+						Nonce:      12345,
+						Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+						MerkleRoot: []byte{},
+						Hash:       new(big.Int).SetUint64(13857702854592346750).Bytes(),
 					},
 					out: new(big.Int).SetUint64(13857702854592346750).Bytes(),
 				},
@@ -730,11 +730,11 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:    12345,
-							Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
-							Pubkey:   "abc123",
-							Hash:     new(big.Int).SetUint64(13857702854592346751).Bytes(),
+							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
+							Nonce:      12345,
+							Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+							MerkleRoot: []byte{},
+							Hash:       new(big.Int).SetUint64(13857702854592346751).Bytes(),
 						},
 					},
 				},
@@ -754,11 +754,11 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:    12345,
-						Target:   new(big.Int).SetUint64(18446744073709551615).Bytes(),
-						Pubkey:   "abc123",
-						Hash:     new(big.Int).SetUint64(13857702854592346751).Bytes(),
+						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
+						Nonce:      12345,
+						Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+						MerkleRoot: []byte{},
+						Hash:       new(big.Int).SetUint64(13857702854592346751).Bytes(),
 					},
 					out: new(big.Int).SetUint64(13857702854592346750).Bytes(),
 				},
@@ -780,11 +780,11 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:    123456789,
-							Target:   new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
-							Pubkey:   "abc123",
-							Hash:     new(big.Int).SetUint64(16295015879318905250).Bytes(),
+							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
+							Nonce:      123456789,
+							Target:     new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
+							MerkleRoot: []byte{},
+							Hash:       new(big.Int).SetUint64(16295015879318905250).Bytes(),
 						},
 					},
 				},
@@ -804,11 +804,11 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:    123456789,
-						Target:   new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
-						Pubkey:   "abc123",
-						Hash:     new(big.Int).SetUint64(16295015879318905250).Bytes(),
+						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
+						Nonce:      123456789,
+						Target:     new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
+						MerkleRoot: []byte{},
+						Hash:       new(big.Int).SetUint64(16295015879318905250).Bytes(),
 					},
 					out: new(big.Int).SetUint64(16295015879318905250).Bytes(),
 				},
@@ -1263,7 +1263,7 @@ func TestSetChain(t *testing.T) {
 
 			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockMinerCalls.numSetPrevBlock)
 			mockMiner.EXPECT().SetTarget(gomock.Any()).Times(c.mockMinerCalls.numSetTarget)
-			mockMiner.EXPECT().ResetTxs().Times(c.mockMinerCalls.numClearTxs)
+			mockMiner.EXPECT().SetTxs(gomock.Any()).Times(c.mockMinerCalls.numClearTxs)
 
 			n := node{
 				chain:        c.nodeSetup.chain,
@@ -1919,6 +1919,140 @@ func TestConfine(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			n := node{}
 			got := n.confine(c.in)
+			if got != c.expected {
+				t.Errorf("expected %v, got %v", c.expected, got)
+			}
+		})
+	}
+}
+
+func TestGetCreditFor(t *testing.T) {
+	cases := []struct {
+		name     string
+		pubkey   string
+		chain    *chain.Chain
+		txpool   []*pb.Tx
+		expected float64
+	}{
+		{
+			name:   "Empty chain and txpool means credit of 0",
+			pubkey: "abc123",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{},
+				},
+			},
+			txpool:   nil,
+			expected: 0,
+		},
+		{
+			name:   "Chain with a single matching credit tx returns it as the available credit",
+			pubkey: "abc123",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						{
+							Txs: []*pb.Tx{
+								{
+									Value:     25,
+									Recipient: "abc123",
+								},
+							},
+						},
+					},
+				},
+			},
+			txpool:   nil,
+			expected: 25,
+		},
+		{
+			name:   "Chain with a single matching credit and single matching debit returns difference as the available credit",
+			pubkey: "abc123",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						{
+							Txs: []*pb.Tx{
+								{
+									Value:     25,
+									Recipient: "abc123",
+								},
+							},
+						},
+						{
+							Txs: []*pb.Tx{
+								{
+									Value:  5,
+									Sender: "abc123",
+								},
+							},
+						},
+					},
+				},
+			},
+			txpool:   nil,
+			expected: 20,
+		},
+		{
+			name:   "Chain with matching credit, txpool with debit, difference returned",
+			pubkey: "abc123",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						{
+							Txs: []*pb.Tx{
+								{
+									Value:     25,
+									Recipient: "abc123",
+								},
+							},
+						},
+					},
+				},
+			},
+			txpool: []*pb.Tx{
+				{
+					Value:  10,
+					Sender: "abc123",
+				},
+			},
+			expected: 15,
+		},
+		{
+			name:   "Chain with matching credit, txpool with additional credit, only the chain-committed credit returned",
+			pubkey: "abc123",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						{
+							Txs: []*pb.Tx{
+								{
+									Value:     25,
+									Recipient: "abc123",
+								},
+							},
+						},
+					},
+				},
+			},
+			txpool: []*pb.Tx{
+				{
+					Value:     10,
+					Recipient: "abc123",
+				},
+			},
+			expected: 25,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			n := node{
+				chain:  c.chain,
+				txpool: c.txpool,
+			}
+
+			got := n.getCreditFor(c.pubkey)
 			if got != c.expected {
 				t.Errorf("expected %v, got %v", c.expected, got)
 			}

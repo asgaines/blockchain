@@ -51,7 +51,7 @@ func main() {
 	flag.IntVar(&poolID, "poolid", 0, "The ID for a node within a single miner's pool (nodes with same pubkey).")
 	flag.StringVar(&bindAddr, "bindAddr", ":20403", "Local address to bind/listen on")
 	flag.StringVar(&returnAddr, "returnAddr", "", "External address (host:port) for peers to return connections")
-	flag.StringVar(&seedAddrsRaw, "seedAddrs", "", "An optional comma-separated list of host/ips with port. It is a seeding of potential peers useful for peer discovery")
+	flag.StringVar(&seedAddrsRaw, "seeds", "", "Seeding of potential peers for peer discovery. An optional comma-separated list of host/ips with port.")
 	flag.IntVar(&minPeers, "minpeers", 25, "The minimum number of peers to aim for; any fewer will trigger a peer discovery event")
 	flag.IntVar(&maxPeers, "maxpeers", 50, "The maximum number of peers to seed out to")
 	flag.DurationVar(&targetDurPerBlock, "targetdur", 10*time.Second, "The desired amount of time between block mining events; controls the difficulty of the mining")
@@ -67,10 +67,6 @@ func main() {
 		flag.Usage()
 		log.Fatal("Please set BLOCKCHAIN_KEY env variable")
 	}
-
-	hb := sha256.Sum256([]byte(key))
-	pubkey := hex.EncodeToString(hb[:])
-	log.Printf("Your public key is: %s", pubkey)
 
 	if returnAddr == "" {
 		flag.Usage()
@@ -90,6 +86,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	fmt.Println(ascii)
+
+	hb := sha256.Sum256([]byte(key))
+	pubkey := hex.EncodeToString(hb[:])
+	log.Printf("Your public key is: %s", pubkey)
 
 	if _, _, err := net.SplitHostPort(bindAddr); err != nil {
 		log.Fatalf("invalid bindAddr: %s", bindAddr)

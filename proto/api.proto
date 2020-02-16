@@ -13,7 +13,7 @@ message Block {
 	bytes prevhash = 3;
 	uint64 nonce = 4;
 	bytes target = 5;
-	string pubkey = 6;
+	bytes merkleRoot = 6;
 	repeated Tx txs = 7;
 }
 
@@ -34,11 +34,17 @@ message NodeID {
 }
 
 message Tx {
-	google.protobuf.Timestamp timestamp = 1;
-	double value = 2;
-	string for = 3;
-	string from = 4;
-    string to = 5;
+    // timestamp is the moment the tx was generated
+    google.protobuf.Timestamp timestamp = 1;
+    // value is the amount of credit being transferred
+    double value = 2;
+    // sender is the public key of the payer, the one giving credit
+    string sender = 3;
+    // recipient is the public key of the payee, the one receiving credit
+    string recipient = 4;
+    // message is an optional field to describe or provide metadata for the transaction
+    string message = 5;
+    // hash is the sha256 hash of the pertinent fields of the transaction
 	bytes hash = 6;
 }
 
@@ -91,4 +97,5 @@ message ShareTxRequest {
 
 message ShareTxResponse {
     bool accepted = 1;
+    string info = 2;
 }

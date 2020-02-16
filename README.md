@@ -42,8 +42,8 @@ Options:
     	How many blocks to solve before recalculating difficulty target (default 10)
   -returnAddr string
     	External address (host:port) for peers to return connections
-  -seedAddrs string
-    	An optional comma-separated list of host/ips with port. It is a seeding of potential peers useful for peer discovery
+  -seeds string
+      Seeding of potential peers for peer discovery. An optional comma-separated list of host/ips with port.
   -speed string
     	Speed of hashing, CPU usage. One of low/medium/high/ultra (default "medium")
   -targetdur duration

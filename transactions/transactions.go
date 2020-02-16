@@ -9,11 +9,11 @@ import (
 )
 
 func SetHash(tx *pb.Tx) {
-	payload := fmt.Sprintf("%f", tx.Value)
-	payload += ptypes.TimestampString(tx.Timestamp)
-	payload += tx.For
-	payload += tx.From
-	payload += tx.To
+	payload := fmt.Sprintf("%f", tx.GetValue())
+	payload += ptypes.TimestampString(tx.GetTimestamp())
+	payload += tx.GetSender()
+	payload += tx.GetRecipient()
+	payload += tx.GetMessage()
 
 	h := sha256.New()
 	h.Write([]byte(payload))

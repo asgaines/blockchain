@@ -36,18 +36,6 @@ func (m *MockMiner) EXPECT() *MockMinerMockRecorder {
 	return m.recorder
 }
 
-// AddTx mocks base method
-func (m *MockMiner) AddTx(arg0 *blockchain.Tx) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddTx", arg0)
-}
-
-// AddTx indicates an expected call of AddTx
-func (mr *MockMinerMockRecorder) AddTx(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTx", reflect.TypeOf((*MockMiner)(nil).AddTx), arg0)
-}
-
 // Mine mocks base method
 func (m *MockMiner) Mine(arg0 context.Context, arg1 chan<- mining.BlockReport) {
 	m.ctrl.T.Helper()
@@ -58,18 +46,6 @@ func (m *MockMiner) Mine(arg0 context.Context, arg1 chan<- mining.BlockReport) {
 func (mr *MockMinerMockRecorder) Mine(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Mine", reflect.TypeOf((*MockMiner)(nil).Mine), arg0, arg1)
-}
-
-// ResetTxs mocks base method
-func (m *MockMiner) ResetTxs() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ResetTxs")
-}
-
-// ResetTxs indicates an expected call of ResetTxs
-func (mr *MockMinerMockRecorder) ResetTxs() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetTxs", reflect.TypeOf((*MockMiner)(nil).ResetTxs))
 }
 
 // SetPrevBlock mocks base method
@@ -96,4 +72,16 @@ func (m *MockMiner) SetTarget(arg0 float64) error {
 func (mr *MockMinerMockRecorder) SetTarget(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTarget", reflect.TypeOf((*MockMiner)(nil).SetTarget), arg0)
+}
+
+// SetTxs mocks base method
+func (m *MockMiner) SetTxs(arg0 []*blockchain.Tx) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetTxs", arg0)
+}
+
+// SetTxs indicates an expected call of SetTxs
+func (mr *MockMinerMockRecorder) SetTxs(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxs", reflect.TypeOf((*MockMiner)(nil).SetTxs), arg0)
 }

@@ -23,11 +23,7 @@ func (h *hasher) Hash(b *Block) []byte {
 	payload += string(b.Prevhash)
 	payload += strconv.FormatUint(b.Nonce, 10)
 	payload += string(b.Target)
-	payload += b.Pubkey
-
-	for _, tx := range b.Txs {
-		payload += string(tx.Hash)
-	}
+	payload += string(b.MerkleRoot)
 
 	hh := sha256.New()
 	hh.Write([]byte(payload))

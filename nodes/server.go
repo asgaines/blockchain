@@ -63,17 +63,25 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 		return nil, errors.New("`value` must be greater than 0")
 	}
 
-	if r.Tx.GetFrom() == "" {
-		return nil, errors.New("`from` must not be empty")
+	if r.Tx.GetSender() == "" {
+		return nil, errors.New("`sender` must not be empty")
 	}
 
-	if r.Tx.GetTo() == "" {
-		return nil, errors.New("`to` must not be empty")
+	if r.Tx.GetRecipient() == "" {
+		return nil, errors.New("`recipient` must not be empty")
 	}
 
-	for _, miner := range n.miners {
-		miner.AddTx(r.Tx)
+	credit := n.getCreditFor(r.Tx.GetSender())
+	log.Println("has credit", credit)
+	log.Println("tx amount", r.Tx.GetValue())
+	if r.Tx.GetValue() > credit {
+		return &pb.ShareTxResponse{
+			Accepted: false,
+			Info:     "Insufficient credit",
+		}, nil
 	}
+
+	n.addTx(r.Tx)
 
 	var except NodeID
 	if nodeID := r.GetNodeID(); nodeID != nil {

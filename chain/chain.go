@@ -71,9 +71,9 @@ func (bc *Chain) GetCreditFor(pubkey string) float64 {
 
 	for _, block := range bc.Pbc.GetBlocks() {
 		for _, tx := range block.GetTxs() {
-			if tx.GetFor() == pubkey {
+			if tx.GetRecipient() == pubkey {
 				credit += tx.GetValue()
-			} else if tx.GetFrom() == pubkey {
+			} else if tx.GetSender() == pubkey {
 				credit -= tx.GetValue()
 			}
 		}

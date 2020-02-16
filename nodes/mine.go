@@ -70,7 +70,7 @@ func (n *node) logBlock(block *chain.Block) {
 		log.Printf("could not write to file: %s", err)
 	}
 
-	minedBy := block.Pubkey
+	minedBy := block.GetMinerPubkey()
 	if minedBy == n.pubkey {
 		minedBy = fmt.Sprintf("%s (you)", minedBy)
 	}
@@ -100,7 +100,7 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 			n.updateTarget(n.difficulty)
 		}
 
-		n.clearTxs()
+		n.resetTxpool()
 		return true
 	}
 
@@ -116,12 +116,6 @@ func (n *node) updateTarget(difficulty float64) {
 func (n *node) updatePrevBlock(block *chain.Block) {
 	for _, miner := range n.miners {
 		miner.SetPrevBlock(block)
-	}
-}
-
-func (n *node) clearTxs() {
-	for _, miner := range n.miners {
-		miner.ResetTxs()
 	}
 }
 

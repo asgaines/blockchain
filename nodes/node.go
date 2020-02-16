@@ -12,6 +12,7 @@ import (
 	"github.com/asgaines/blockchain/dmaps"
 	"github.com/asgaines/blockchain/mining"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
+	"github.com/golang/protobuf/ptypes"
 )
 
 // InitialExpectedHashrate is the seed of how many hashes are possible per second.
@@ -38,6 +39,7 @@ func NewNode(miners []mining.Miner, pubkey string, poolID int, minPeers int, max
 		miners:            miners,
 		pubkey:            pubkey,
 		poolID:            poolID,
+		txpool:            make([]*pb.Tx, 0),
 		peers:             make(map[NodeID]Peer),
 		knownAddrs:        dmaps.New(),
 		minPeers:          minPeers,
@@ -79,6 +81,7 @@ type node struct {
 	// node within the single miner's pool should have a unique ID.
 	poolID            int
 	miners            []mining.Miner
+	txpool            []*pb.Tx
 	peers             map[NodeID]Peer
 	knownAddrs        dmaps.Dmap
 	minPeers          int
@@ -120,6 +123,9 @@ func (n *node) Run(ctx context.Context) {
 
 	n.difficulty = diff
 	n.chain = c
+
+	// TODO: init txs from peer state fetch
+	n.resetTxpool()
 
 	log.Println("Initializing mining...")
 	for _, miner := range n.miners {
@@ -186,6 +192,46 @@ func (n node) propagateTx(tx *pb.Tx, except NodeID) {
 				log.Println(err)
 			}
 		}
+	}
+}
+
+func (n *node) addTx(tx *pb.Tx) {
+	n.txpool = append(n.txpool, tx)
+
+	for _, miner := range n.miners {
+		miner.SetTxs(n.txpool[:])
+	}
+}
+
+func (n *node) getCreditFor(pubkey string) float64 {
+	creditInChain := n.chain.GetCreditFor(pubkey)
+
+	debitsInTxpool := float64(0)
+	for _, tx := range n.txpool {
+		if tx.GetSender() == pubkey {
+			debitsInTxpool += tx.GetValue()
+		}
+	}
+
+	return creditInChain - debitsInTxpool
+}
+
+func (n *node) resetTxpool() {
+	// TODO: ensure ALL txs in txs are in new chain
+	// If not, keep orphans in txs
+	n.txpool = []*pb.Tx{
+		{
+			Timestamp: ptypes.TimestampNow(),
+			Value:     100,
+			Sender:    "", // From thin air...
+			Recipient: n.pubkey,
+			Message:   "Block solve reward",
+			Hash:      nil,
+		},
+	}
+
+	for _, miner := range n.miners {
+		miner.SetTxs(n.txpool[:])
 	}
 }
 
