@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -15,20 +14,27 @@ import (
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
 )
 
+// InitialExpectedHashrate is the seed of how many hashes are possible per second.
+// The variable set by it is overridden by real data once it comes through.
+//
+// Setting it too high could lead to the genesis block solve taking a long time
+// before the difficulty is adjusted.
+const InitialExpectedHashrate = float64(50) // ultra: 700_000)
+
 // Node represents a blockchain node; a peer within the network.
 // It preserves a copy of the blockchain, competes for new block additions by mining,
 // and verifies work of peer nodes.
 type Node interface {
 	Run(ctx context.Context)
+	Ready() chan struct{}
 
 	pb.NodeServer
 }
 
-// NewNode instantiates a Node; a blockchain client for mining
+// NewNode instantiates a Node; a blockchain client/peer for mining
 // and propagating new blocks/transactions
-func NewNode(c *chain.Chain, miners []mining.Miner, pubkey string, poolID int, minPeers int, maxPeers int, targetDurPerBlock time.Duration, recalcPeriod int, returnAddr string, speed mining.HashSpeed, filesPrefix string, difficulty float64, hasher chain.Hasher) Node {
+func NewNode(miners []mining.Miner, pubkey string, poolID int, minPeers int, maxPeers int, targetDurPerBlock time.Duration, recalcPeriod int, returnAddr string, seedAddrs []string, speed mining.HashSpeed, filesPrefix string, hasher chain.Hasher) Node {
 	n := node{
-		chain:             c,
 		miners:            miners,
 		pubkey:            pubkey,
 		poolID:            poolID,
@@ -40,9 +46,9 @@ func NewNode(c *chain.Chain, miners []mining.Miner, pubkey string, poolID int, m
 		recalcPeriod:      recalcPeriod,
 		returnAddr:        returnAddr,
 		filesPrefix:       filesPrefix,
-		difficulty:        difficulty,
 		hasher:            hasher,
-		extraAddrs:        os.Getenv("BLOCKCHAIN_ADDRS"),
+		seedAddrs:         seedAddrs,
+		ready:             make(chan struct{}),
 	}
 
 	n.appendAddrs(n.getSeedAddrs())
@@ -86,7 +92,8 @@ type node struct {
 	filesPrefix       string
 	difficulty        float64
 	hasher            chain.Hasher
-	extraAddrs        string
+	seedAddrs         []string
+	ready             chan struct{}
 }
 
 type nodeID struct {
@@ -102,6 +109,24 @@ func (n *node) Run(ctx context.Context) {
 	}()
 	defer n.close()
 
+	log.Println("Discovering peers...")
+	n.discoverPeers(ctx)
+
+	log.Println("Fetching initial state from peers...")
+	c, diff, err := n.getInitState(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	n.difficulty = diff
+	n.chain = c
+
+	log.Println("Initializing mining...")
+	for _, miner := range n.miners {
+		miner.SetTarget(n.difficulty)
+		miner.SetPrevBlock(n.chain.LastLink())
+	}
+
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -110,13 +135,21 @@ func (n *node) Run(ctx context.Context) {
 		go n.periodicDiscoverPeers(ctx)
 	}()
 
+	log.Println("Mining started...")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		n.mine(ctx)
 	}()
 
+	// Allow the server to begin accepting connections
+	n.ready <- struct{}{}
+
 	wg.Wait()
+}
+
+func (n *node) Ready() chan struct{} {
+	return n.ready
 }
 
 func (n *node) close() {
@@ -138,9 +171,8 @@ func (n *node) close() {
 func (n node) propagateChain(except map[NodeID]bool) {
 	for nodeID, p := range n.peers {
 		if _, ok := except[nodeID]; !ok {
-			log.Printf("Propagation to %v\n\n", nodeID)
-			if err := p.ShareChain(n.chain, n.getID(), n.returnAddr); err != nil {
-				log.Println(err)
+			if err := p.ShareChain(n.chain, n.getID()); err != nil {
+				log.Printf("Removing peer: %s", nodeID.Pubkey)
 				delete(n.peers, nodeID)
 			}
 		}
@@ -150,7 +182,7 @@ func (n node) propagateChain(except map[NodeID]bool) {
 func (n node) propagateTx(tx *pb.Tx, except NodeID) {
 	for nodeID, p := range n.peers {
 		if nodeID != except {
-			if err := p.ShareTx(tx, n.getID(), n.returnAddr); err != nil {
+			if err := p.ShareTx(tx, n.getID()); err != nil {
 				log.Println(err)
 			}
 		}
@@ -226,7 +258,7 @@ func (n *node) getSeedAddrs() []string {
 		addrs = append(addrs, addr)
 	}
 
-	for _, addr := range strings.Split(n.extraAddrs, ",") {
+	for _, addr := range n.seedAddrs {
 		addrs = append(addrs, addr)
 	}
 
@@ -235,7 +267,8 @@ func (n *node) getSeedAddrs() []string {
 
 func (n *node) getID() NodeID {
 	return NodeID{
-		Pubkey: n.pubkey,
-		Id:     int32(n.poolID),
+		Pubkey:     n.pubkey,
+		Id:         int32(n.poolID),
+		ReturnAddr: n.returnAddr,
 	}
 }

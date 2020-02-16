@@ -283,6 +283,49 @@ func init() {
 	_DefaultNodeClientCommandConfig.AddFlags(_NodeDiscoverClientCommand.Flags())
 }
 
+var _NodeGetStateClientCommand = &cobra.Command{
+	Use:  "getstate",
+	Long: "GetState client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",
+	Example: `
+Save a sample request to a file (or refer to your protobuf descriptor to create one):
+	getstate -p > req.json
+
+Submit request using file:
+	getstate -f req.json
+
+Authenticate using the Authorization header (requires transport security):
+	export AUTH_TOKEN=your_access_token
+	export SERVER_ADDR=api.example.com:443
+	echo '{json}' | getstate --tls`,
+	Run: func(cmd *cobra.Command, args []string) {
+		var v GetStateRequest
+		err := _NodeRoundTrip(v, func(cli NodeClient, in iocodec.Decoder, out iocodec.Encoder) error {
+
+			err := in.Decode(&v)
+			if err != nil {
+				return err
+			}
+
+			resp, err := cli.GetState(context.Background(), &v)
+
+			if err != nil {
+				return err
+			}
+
+			return out.Encode(resp)
+
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
+func init() {
+	NodeClientCommand.AddCommand(_NodeGetStateClientCommand)
+	_DefaultNodeClientCommandConfig.AddFlags(_NodeGetStateClientCommand.Flags())
+}
+
 var _NodeShareChainClientCommand = &cobra.Command{
 	Use:  "sharechain",
 	Long: "ShareChain client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",

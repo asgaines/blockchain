@@ -65,3 +65,19 @@ func (bc Chain) ToJSON() []byte {
 
 	return j
 }
+
+func (bc *Chain) GetCreditFor(pubkey string) float64 {
+	credit := float64(0)
+
+	for _, block := range bc.Pbc.GetBlocks() {
+		for _, tx := range block.GetTxs() {
+			if tx.GetFor() == pubkey {
+				credit += tx.GetValue()
+			} else if tx.GetFrom() == pubkey {
+				credit -= tx.GetValue()
+			}
+		}
+	}
+
+	return credit
+}

@@ -27,6 +27,10 @@ message NodeID {
     // id is the unique identifier of a node within a pool; a collection of nodes
     // mining for the same pubkey
     int32 id = 2;
+    // returnAddr is the path back to the requesting peer so the responding peer
+    // can connect back. Current methods for discovering request ip not reliable within
+    // Docker container
+    string returnAddr = 3;
 }
 
 message Tx {
@@ -40,19 +44,16 @@ message Tx {
 
 service Node {
     rpc Discover(DiscoverRequest) returns (DiscoverResponse);
+    rpc GetState(GetStateRequest) returns (GetStateResponse);
     rpc ShareChain(ShareChainRequest) returns (ShareChainResponse);
     rpc ShareTx(ShareTxRequest) returns (ShareTxResponse);
 }
 
 message DiscoverRequest {
     NodeID nodeID = 1;
-    // returnAddr is the path back to the requesting peer so the responding peer
-    // can connect back. Current methods for discovering request ip not reliable within
-    // Docker container
-    string returnAddr = 2;
     // peerAddrs is the collection of addresses of known nodes.
     // They can be used to further discover more peers
-    repeated string knownAddrs = 3;
+    repeated string knownAddrs = 2;
 }
 
 message DiscoverResponse {
@@ -65,13 +66,18 @@ message DiscoverResponse {
     repeated string knownAddrs = 3;
 }
 
+message GetStateRequest {
+    NodeID nodeID = 1;
+}
+
+message GetStateResponse {
+    Chain chain = 1;
+    double difficulty = 2;
+}
+
 message ShareChainRequest {
     NodeID nodeID = 1;
     Chain chain = 2;
-    // returnAddr is the path back to the requesting peer so the responding peer
-    // can connect back. Current methods for discovering request ip not reliable within
-    // Docker container
-    string returnAddr = 3;
 }
 
 message ShareChainResponse {
@@ -81,10 +87,6 @@ message ShareChainResponse {
 message ShareTxRequest {
     NodeID nodeID = 1;
     Tx tx = 2;
-    // returnAddr is the path back to the requesting peer so the responding peer
-    // can connect back. Current methods for discovering request ip not reliable within
-    // Docker container
-    string returnAddr = 3;
 }
 
 message ShareTxResponse {

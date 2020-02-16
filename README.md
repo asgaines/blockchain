@@ -1,0 +1,51 @@
+# Blockchain
+
+Proof-of-concept of the inner workings of a blockchain implementation.
+
+## Installation
+
+Two options: pull or build
+
+### Pull
+
+`docker pull asgaines/blockchain:latest`
+
+### Build
+
+`docker build -t asgaines/blockchain:latest`
+
+## Run
+
+`docker run -p 20403:20403 --rm -v ${PWD}/blockchain:/go/src/github.com/asgaines/blockchain -e BLOCKCHAIN_KEY=<your-key> asgaines/blockchain:latest -returnAddr=<your-ip-or-host>:20403 -seedAddrs=<comma-separated-peer-addrs>`
+
+Required:\
+`BLOCKCHAIN_KEY` env variable. It is your "private" key (more similar to a password), used for generating your wallet address and for verifying transactions.\
+`-returnAddr` is the address (with port) at which your node is accessible to the rest of the network.
+
+
+Options:
+
+```
+  -bindAddr string
+    	Local address to bind/listen on (default ":20403")
+  -filesprefix string
+    	Common prefix for all output files (default "run")
+  -maxpeers int
+    	The maximum number of peers to seed out to (default 50)
+  -miners int
+    	The number of concurrent miners to run, one per thread (default 1)
+  -minpeers int
+    	The minimum number of peers to aim for; any fewer will trigger a peer discovery event (default 25)
+  -poolid int
+    	The ID for a node within a single miner's pool (nodes with same pubkey).
+  -recalc int
+    	How many blocks to solve before recalculating difficulty target (default 10)
+  -returnAddr string
+    	External address (host:port) for peers to return connections
+  -seedAddrs string
+    	An optional comma-separated list of host/ips with port. It is a seeding of potential peers useful for peer discovery
+  -speed string
+    	Speed of hashing, CPU usage. One of low/medium/high/ultra (default "medium")
+  -targetdur duration
+    	The desired amount of time between block mining events; controls the difficulty of the mining (default 10s)
+```

@@ -2,11 +2,11 @@ package nodes
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/asgaines/blockchain/chain"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
 	"google.golang.org/grpc"
 )
@@ -14,8 +14,6 @@ import (
 func (n *node) periodicDiscoverPeers(ctx context.Context) {
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
-
-	n.discoverPeers(ctx)
 
 	for {
 		select {
@@ -30,7 +28,7 @@ func (n *node) periodicDiscoverPeers(ctx context.Context) {
 }
 
 func (n *node) discoverPeers(ctx context.Context) {
-	log.Printf("Discovering peers. Current peers: %v. Known addrs: %v", n.peers, n.knownAddrs)
+	// log.Printf("Discovering peers. Current peers: %v. Known addrs: %v", n.peers, n.knownAddrs)
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
 
@@ -54,7 +52,6 @@ func (n *node) discoverPeers(ctx context.Context) {
 
 			resp, err := client.Discover(ctx, &pb.DiscoverRequest{
 				NodeID:     n.getID().ToProto(),
-				ReturnAddr: n.returnAddr,
 				KnownAddrs: n.getKnownAddrsExcept([]string{door}),
 			})
 			if err != nil {
@@ -63,7 +60,7 @@ func (n *node) discoverPeers(ctx context.Context) {
 				return
 			}
 
-			log.Printf("received known addrs: %v", resp.GetKnownAddrs())
+			// log.Printf("received known addrs: %v", resp.GetKnownAddrs())
 
 			nodeID := NodeIDFrom(resp.GetNodeID())
 			if nodeID == n.getID() {
@@ -94,8 +91,8 @@ func (n *node) discoverPeers(ctx context.Context) {
 					conn,
 				)
 				mutex.Unlock()
-				log.Printf("added new peer: %s", door)
-				fmt.Println(n.peers)
+				log.Printf("Added new peer: %s (address: %s)", nodeID.ToProto().GetPubkey(), door)
+				// fmt.Println(n.peers)
 			} else {
 				if err := conn.Close(); err != nil {
 					log.Println(err)
@@ -107,4 +104,40 @@ func (n *node) discoverPeers(ctx context.Context) {
 	}
 
 	wg.Wait()
+}
+
+func (n *node) getInitState(ctx context.Context) (*chain.Chain, float64, error) {
+	mainChain := chain.InitChain(n.hasher, n.filesPrefix)
+	difficulty := InitialExpectedHashrate * n.targetDurPerBlock.Seconds()
+
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+
+	wg.Add(len(n.peers))
+	for _, p := range n.peers {
+		go func(p Peer) {
+			defer wg.Done()
+
+			c, diff, err := p.GetState(n.getID())
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			if !n.IsValid(c) {
+				return
+			}
+
+			if c.Length() > mainChain.Length() {
+				mutex.Lock()
+				mainChain = c
+				difficulty = diff
+				mutex.Unlock()
+			}
+		}(p)
+	}
+
+	wg.Wait()
+
+	return mainChain, difficulty, nil
 }

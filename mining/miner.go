@@ -37,21 +37,17 @@ type BlockReport struct {
 	Block *chain.Block
 }
 
-// NewMiner returns an implementation of Miner, ready to begin mining
-func NewMiner(ID int, prevBlock *chain.Block, pubkey string, difficulty float64, targetDurPerBlock time.Duration, hashSpeed HashSpeed, hasher chain.Hasher) Miner {
+// NewMiner returns an implementation of Miner. It still requires setting the target
+// from the difficulty and the previous block before mining.
+func NewMiner(ID int, pubkey string, targetDurPerBlock time.Duration, hashSpeed HashSpeed, hasher chain.Hasher) Miner {
 	m := miner{
 		ID:        ID,
-		prevBlock: prevBlock,
 		pubkey:    pubkey,
 		hashSpeed: hashSpeed,
 		hasher:    hasher,
 	}
 
 	m.ResetTxs()
-
-	if err := m.SetTarget(difficulty); err != nil {
-		log.Fatal(err)
-	}
 
 	return &m
 }
@@ -77,15 +73,15 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 		default:
 		}
 
-		// switch m.hashSpeed {
-		// case LowSpeed:
-		// 	time.Sleep(100 * time.Millisecond)
-		// case MediumSpeed:
-		// 	time.Sleep(10 * time.Millisecond)
-		// case HighSpeed:
-		// 	time.Sleep(1 * time.Millisecond)
-		// case UltraSpeed:
-		// }
+		switch m.hashSpeed {
+		case LowSpeed:
+			time.Sleep(100 * time.Millisecond)
+		case MediumSpeed:
+			time.Sleep(10 * time.Millisecond)
+		case HighSpeed:
+			time.Sleep(1 * time.Millisecond)
+		case UltraSpeed:
+		}
 
 		candidate := chain.NewBlock(
 			m.hasher,

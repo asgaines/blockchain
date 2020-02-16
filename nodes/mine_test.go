@@ -620,7 +620,7 @@ func TestMine(t *testing.T) {
 				mockMiner.EXPECT().SetTarget(difficulty)
 			}
 			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockCalls.setPrevBlock.times)
-			mockMiner.EXPECT().ClearTxs().Times(c.mockCalls.clearTxs.times)
+			mockMiner.EXPECT().ResetTxs().Times(c.mockCalls.clearTxs.times)
 
 			n := &node{
 				chain:             c.nodeSetup.chain,
@@ -1263,7 +1263,7 @@ func TestSetChain(t *testing.T) {
 
 			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockMinerCalls.numSetPrevBlock)
 			mockMiner.EXPECT().SetTarget(gomock.Any()).Times(c.mockMinerCalls.numSetTarget)
-			mockMiner.EXPECT().ClearTxs().Times(c.mockMinerCalls.numClearTxs)
+			mockMiner.EXPECT().ResetTxs().Times(c.mockMinerCalls.numClearTxs)
 
 			n := node{
 				chain:        c.nodeSetup.chain,

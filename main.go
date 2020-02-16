@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -32,18 +35,11 @@ const ascii = `
                           /___/                                 /___/       /___/                   
 `
 
-// InitialExpectedHashrate is the seed of how many hashes are possible per second.
-// The variable set by it is overridden by real data once it comes through.
-//
-// Setting it too high could lead to the genesis block solve taking a long time
-// before the difficulty is adjusted.
-const InitialExpectedHashrate = float64(700000)
-
 func main() {
-	var pubkey string
 	var poolID int
 	var bindAddr string
 	var returnAddr string
+	var seedAddrsRaw string
 	var minPeers int
 	var maxPeers int
 	var targetDurPerBlock time.Duration
@@ -53,23 +49,28 @@ func main() {
 	var filesPrefix string
 
 	flag.IntVar(&poolID, "poolid", 0, "The ID for a node within a single miner's pool (nodes with same pubkey).")
-	flag.StringVar(&bindAddr, "bindAddr", ":20403", "Address to listen on")
+	flag.StringVar(&bindAddr, "bindAddr", ":20403", "Local address to bind/listen on")
 	flag.StringVar(&returnAddr, "returnAddr", "", "External address (host:port) for peers to return connections")
-	flag.IntVar(&minPeers, "minpeers", 5, "The minimum number of peers to aim for; any fewer will trigger a peer discovery event")
-	flag.IntVar(&maxPeers, "maxpeers", 25, "The maximum number of peers to seed out to")
-	flag.DurationVar(&targetDurPerBlock, "targetdur", 10*time.Minute, "The desired amount of time between block mining events; controls the difficulty of the mining")
-	flag.IntVar(&recalcPeriod, "recalc", 2016, "How many blocks to solve before recalculating difficulty target")
+	flag.StringVar(&seedAddrsRaw, "seedAddrs", "", "An optional comma-separated list of host/ips with port. It is a seeding of potential peers useful for peer discovery")
+	flag.IntVar(&minPeers, "minpeers", 25, "The minimum number of peers to aim for; any fewer will trigger a peer discovery event")
+	flag.IntVar(&maxPeers, "maxpeers", 50, "The maximum number of peers to seed out to")
+	flag.DurationVar(&targetDurPerBlock, "targetdur", 10*time.Second, "The desired amount of time between block mining events; controls the difficulty of the mining")
+	flag.IntVar(&recalcPeriod, "recalc", 10, "How many blocks to solve before recalculating difficulty target")
 	flag.StringVar(&speedArg, "speed", "medium", "Speed of hashing, CPU usage. One of low/medium/high/ultra")
-	flag.IntVar(&numMiners, "miners", 1, "The number of miners to run, one per CPU thread")
+	flag.IntVar(&numMiners, "miners", 1, "The number of concurrent miners to run, one per thread")
 	flag.StringVar(&filesPrefix, "filesprefix", "run", "Common prefix for all output files")
 
 	flag.Parse()
 
-	pubkey = os.Getenv("BLOCKCHAIN_PUBKEY")
-	if pubkey == "" {
+	key := os.Getenv("BLOCKCHAIN_KEY")
+	if key == "" {
 		flag.Usage()
-		log.Fatal("pubkey missing from environment. Please set BLOCKCHAIN_PUBKEY env variable.")
+		log.Fatal("Please set BLOCKCHAIN_KEY env variable")
 	}
+
+	hb := sha256.Sum256([]byte(key))
+	pubkey := hex.EncodeToString(hb[:])
+	log.Printf("Your public key is: %s", pubkey)
 
 	if returnAddr == "" {
 		flag.Usage()
@@ -96,16 +97,12 @@ func main() {
 
 	hasher := chain.NewHasher()
 	filesPrefix = fmt.Sprintf("%s_%dp_%dm", targetDurPerBlock, recalcPeriod, numMiners)
-	c := chain.InitChain(hasher, filesPrefix)
-	difficulty := InitialExpectedHashrate * targetDurPerBlock.Seconds()
 	miners := make([]mining.Miner, 0, numMiners)
 
 	for n := 0; n < numMiners; n++ {
 		miners = append(miners, mining.NewMiner(
 			n,
-			(*chain.Block)(c.LastLink()),
 			pubkey,
-			difficulty,
 			targetDurPerBlock,
 			speed,
 			hasher,
@@ -113,7 +110,6 @@ func main() {
 	}
 
 	node := nodes.NewNode(
-		c,
 		miners,
 		pubkey,
 		poolID,
@@ -122,9 +118,9 @@ func main() {
 		targetDurPerBlock,
 		recalcPeriod,
 		returnAddr,
+		strings.Split(seedAddrsRaw, ","),
 		speed,
 		filesPrefix,
-		difficulty,
 		hasher,
 	)
 
@@ -133,6 +129,8 @@ func main() {
 		defer wg.Done()
 		node.Run(ctx)
 	}()
+
+	<-node.Ready()
 
 	gsrv := grpc.NewServer()
 	pb.RegisterNodeServer(gsrv, node)

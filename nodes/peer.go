@@ -11,8 +11,9 @@ import (
 
 // Peer manages a client connection to a Node running at a different address
 type Peer interface {
-	ShareChain(c *chain.Chain, nodeID NodeID, returnAddr string) error
-	ShareTx(tx *pb.Tx, nodeID NodeID, returnAddr string) error
+	GetState(nodeID NodeID) (*chain.Chain, float64, error)
+	ShareChain(c *chain.Chain, nodeID NodeID) error
+	ShareTx(tx *pb.Tx, nodeID NodeID) error
 	Close() error
 }
 
@@ -32,30 +33,40 @@ type peer struct {
 	conn       *grpc.ClientConn
 }
 
-func (p *peer) ShareChain(c *chain.Chain, nodeID NodeID, returnAddr string) error {
+func (p *peer) GetState(nodeID NodeID) (*chain.Chain, float64, error) {
+	resp, err := p.client.GetState(p.ctx, &pb.GetStateRequest{
+		NodeID: nodeID.ToProto(),
+	})
+
+	c := resp.GetChain()
+
+	return &chain.Chain{
+		Pbc: c,
+	}, resp.GetDifficulty(), err
+}
+
+func (p *peer) ShareChain(c *chain.Chain, nodeID NodeID) error {
 	resp, err := p.client.ShareChain(p.ctx, &pb.ShareChainRequest{
-		Chain:      c.ToProto(),
-		NodeID:     nodeID.ToProto(),
-		ReturnAddr: returnAddr,
+		Chain:  c.ToProto(),
+		NodeID: nodeID.ToProto(),
 	})
 	if err != nil {
 		return err
 	}
 
 	if !resp.GetAccepted() {
-		log.Println("PEER DID NOT ACCEPT CHAIN")
+		// log.Println("PEER DID NOT ACCEPT CHAIN")
 	} else {
-		log.Println("PEER ACCEPTED CHAIN")
+		// log.Println("PEER ACCEPTED CHAIN")
 	}
 
 	return nil
 }
 
-func (p *peer) ShareTx(tx *pb.Tx, nodeID NodeID, returnAddr string) error {
+func (p *peer) ShareTx(tx *pb.Tx, nodeID NodeID) error {
 	resp, err := p.client.ShareTx(p.ctx, &pb.ShareTxRequest{
-		Tx:         tx,
-		NodeID:     nodeID.ToProto(),
-		ReturnAddr: returnAddr,
+		Tx:     tx,
+		NodeID: nodeID.ToProto(),
 	})
 	if err != nil {
 		return err

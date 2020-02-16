@@ -15,14 +15,24 @@ import (
 )
 
 func (n *node) Discover(ctx context.Context, r *pb.DiscoverRequest) (*pb.DiscoverResponse, error) {
-	n.appendAddrs(append(r.GetKnownAddrs(), r.GetReturnAddr()))
-
-	log.Printf("I was discovered and responded with known addrs: %v", n.getKnownAddrsExcept([]string{r.GetReturnAddr()}))
+	n.appendAddrs(append(r.GetKnownAddrs(), r.NodeID.GetReturnAddr()))
 
 	return &pb.DiscoverResponse{
-		Ok:         true,
+		Ok:         true, // len(n.peers) < n.maxPeers,
 		NodeID:     n.getID().ToProto(),
-		KnownAddrs: n.getKnownAddrsExcept([]string{r.GetReturnAddr()}),
+		KnownAddrs: n.getKnownAddrsExcept([]string{r.NodeID.GetReturnAddr()}),
+	}, nil
+}
+
+func (n *node) GetState(ctx context.Context, r *pb.GetStateRequest) (*pb.GetStateResponse, error) {
+	var c *pb.Chain
+	if n.chain != nil {
+		c = n.chain.ToProto()
+	}
+
+	return &pb.GetStateResponse{
+		Chain:      c,
+		Difficulty: n.difficulty,
 	}, nil
 }
 
@@ -74,7 +84,7 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 	return &pb.ShareTxResponse{Accepted: true}, nil
 }
 
-// getPeerAddr is a remnant of an attempt to discover requesting peer's
+// getPeerAddr is currently a remnant of an attempt to discover requesting peer's
 // ip address. Current methods for discovering ip are not reliable within Docker,
 // as the ip is reported to the Docker gateway proxy.
 // This means connections are reliant upon the requesting peer providing their own correct

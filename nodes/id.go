@@ -12,14 +12,16 @@ func NodeIDFrom(nodeID *pb.NodeID) NodeID {
 }
 
 type NodeID struct {
-	Pubkey string
-	Id     int32
+	Pubkey     string
+	Id         int32
+	ReturnAddr string
 }
 
 func (n NodeID) ToProto() *pb.NodeID {
 	return &pb.NodeID{
-		Pubkey: n.Pubkey,
-		Id:     n.Id,
+		Pubkey:     n.Pubkey,
+		Id:         n.Id,
+		ReturnAddr: n.ReturnAddr,
 	}
 }
 

@@ -29,7 +29,6 @@ func (n *node) mine(ctx context.Context) {
 	}
 
 	for mineReport := range n.mergeConveyors(conveyors...) {
-		log.Println("SUCCESSFULLY SOLVED NEW BLOCK")
 		chain := n.chain.WithBlock(mineReport.Block)
 		if overridden := n.setChain(chain, true); !overridden {
 			log.Fatal("solving a block did not successfully lead to own chain override")
@@ -71,7 +70,12 @@ func (n *node) logBlock(block *chain.Block) {
 		log.Printf("could not write to file: %s", err)
 	}
 
-	log.Printf("%064x (%vs)\n", block.Hash, lastLinkDur.Seconds())
+	minedBy := block.Pubkey
+	if minedBy == n.pubkey {
+		minedBy = fmt.Sprintf("%s (you)", minedBy)
+	}
+
+	log.Printf("%064x (%vs) [%s]\n", block.Hash, lastLinkDur.Seconds(), minedBy)
 }
 
 func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
@@ -97,11 +101,9 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 		}
 
 		n.clearTxs()
-
 		return true
 	}
 
-	log.Println("Not overriding")
 	return false
 }
 
