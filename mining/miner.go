@@ -69,16 +69,6 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 		default:
 		}
 
-		switch m.hashSpeed {
-		case LowSpeed:
-			time.Sleep(100 * time.Millisecond)
-		case MediumSpeed:
-			time.Sleep(10 * time.Millisecond)
-		case HighSpeed:
-			time.Sleep(1 * time.Millisecond)
-		case UltraSpeed:
-		}
-
 		candidate := chain.NewBlock(
 			m.hasher,
 			m.prevHash,
@@ -96,7 +86,7 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 		// Block is considered solved if the generated hash is less than or equal
 		// to the target value
 		cmp := hashBI.Cmp(targetBI)
-		if solved := cmp == 0 || cmp == -1; solved {
+		if solved := cmp != 1; solved {
 			conveyor <- BlockReport{
 				ID:    m.ID,
 				Block: candidate,
