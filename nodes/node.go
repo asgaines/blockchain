@@ -12,7 +12,6 @@ import (
 	"github.com/asgaines/blockchain/dmaps"
 	"github.com/asgaines/blockchain/mining"
 	pb "github.com/asgaines/blockchain/protogo/blockchain"
-	"github.com/golang/protobuf/ptypes"
 )
 
 // InitialExpectedHashrate is the seed of how many hashes are possible per second.
@@ -200,14 +199,6 @@ func (n node) propagateTx(tx *pb.Tx, except NodeID) {
 	}
 }
 
-func (n *node) addTx(tx *pb.Tx) {
-	n.txpool = append(n.txpool, tx)
-
-	for _, miner := range n.miners {
-		miner.SetTxs(n.txpool[:])
-	}
-}
-
 func (n *node) getCreditFor(pubkey string) float64 {
 	creditInChain := n.chain.GetCreditFor(pubkey)
 
@@ -219,25 +210,6 @@ func (n *node) getCreditFor(pubkey string) float64 {
 	}
 
 	return creditInChain - debitsInTxpool
-}
-
-func (n *node) resetTxpool() {
-	// TODO: ensure ALL txs in txs are in new chain
-	// If not, keep orphans in txs
-	n.txpool = []*pb.Tx{
-		{
-			Timestamp: ptypes.TimestampNow(),
-			Value:     100,
-			Sender:    "", // From thin air...
-			Recipient: n.pubkey,
-			Message:   "Block solve reward",
-			Hash:      nil,
-		},
-	}
-
-	for _, miner := range n.miners {
-		miner.SetTxs(n.txpool[:])
-	}
 }
 
 func (n *node) getStorageFnameProto() string {

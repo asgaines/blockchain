@@ -12,6 +12,8 @@ import (
 
 	"github.com/asgaines/blockchain/chain"
 	"github.com/asgaines/blockchain/mining"
+	pb "github.com/asgaines/blockchain/protogo/blockchain"
+	"github.com/asgaines/blockchain/transactions"
 	"github.com/golang/protobuf/ptypes"
 )
 
@@ -34,6 +36,7 @@ func (n *node) mine(ctx context.Context) {
 		if overridden := n.setChain(chain, true); !overridden {
 			log.Fatal("solving a block did not successfully lead to own chain override")
 		}
+
 		n.propagateChain(nil)
 	}
 }
@@ -106,6 +109,35 @@ func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
 	}
 
 	return false
+}
+
+func (n *node) addTx(tx *pb.Tx) {
+	n.txpool = append(n.txpool, tx)
+
+	for _, miner := range n.miners {
+		miner.SetTxs(n.txpool[:])
+	}
+}
+
+func (n *node) resetTxpool() {
+	rewardTx := &pb.Tx{
+		Timestamp: ptypes.TimestampNow(),
+		Value:     100,
+		Sender:    "", // From thin air...
+		Recipient: n.pubkey,
+		Message:   "Block solve reward",
+		Hash:      nil,
+	}
+
+	transactions.SetHash(rewardTx)
+
+	// TODO: ensure ALL txs in txs are in new chain
+	// If not, keep orphans in txs
+	n.txpool = []*pb.Tx{rewardTx}
+
+	for _, miner := range n.miners {
+		miner.SetTxs(n.txpool[:])
+	}
 }
 
 func (n *node) updateTarget(difficulty float64) {
