@@ -411,3 +411,46 @@ func init() {
 	NodeClientCommand.AddCommand(_NodeShareTxClientCommand)
 	_DefaultNodeClientCommandConfig.AddFlags(_NodeShareTxClientCommand.Flags())
 }
+
+var _NodeGetCreditClientCommand = &cobra.Command{
+	Use:  "getcredit",
+	Long: "GetCredit client\n\nYou can use environment variables with the same name of the command flags.\nAll caps and s/-/_, e.g. SERVER_ADDR.",
+	Example: `
+Save a sample request to a file (or refer to your protobuf descriptor to create one):
+	getcredit -p > req.json
+
+Submit request using file:
+	getcredit -f req.json
+
+Authenticate using the Authorization header (requires transport security):
+	export AUTH_TOKEN=your_access_token
+	export SERVER_ADDR=api.example.com:443
+	echo '{json}' | getcredit --tls`,
+	Run: func(cmd *cobra.Command, args []string) {
+		var v GetCreditRequest
+		err := _NodeRoundTrip(v, func(cli NodeClient, in iocodec.Decoder, out iocodec.Encoder) error {
+
+			err := in.Decode(&v)
+			if err != nil {
+				return err
+			}
+
+			resp, err := cli.GetCredit(context.Background(), &v)
+
+			if err != nil {
+				return err
+			}
+
+			return out.Encode(resp)
+
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
+func init() {
+	NodeClientCommand.AddCommand(_NodeGetCreditClientCommand)
+	_DefaultNodeClientCommandConfig.AddFlags(_NodeGetCreditClientCommand.Flags())
+}

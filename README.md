@@ -54,4 +54,10 @@ Options:
 
 Interact with the node directly. Uses gRPC Cobra client interface.
 
+### Submit Transaction
+
 `docker run -i --rm --entrypoint="" asgaines/blockchain:latest go run client/main.go node sharetx -s <node-ip>:20403 <<< '{"tx": {"value": <amount-to-transfer>, "sender": "<your-pubkey>", "recipient": "<recipient-pubkey>", "message": "<optional-metadata>"}}'`
+
+### Check Credit
+
+`docker run -i --rm --entrypoint="" asgaines/blockchain:latest go run client/main.go node getcredit -s <node-ip>:20403 <<< '{"pubkey": "<desired-pubkey>"}'`

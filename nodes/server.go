@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -76,16 +77,16 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 	}
 
 	credit := n.getCreditFor(r.Tx.GetSender())
-	log.Println("has credit", credit)
-	log.Println("tx amount", r.Tx.GetValue())
 	if r.Tx.GetValue() > credit {
 		return &pb.ShareTxResponse{
 			Accepted: false,
-			Info:     "Insufficient credit",
+			Info:     fmt.Sprintf("Insufficient credit. Pubkey owns %v", credit),
 		}, nil
 	}
 
 	n.addTx(r.Tx)
+
+	log.Printf("New tx: %v from %s to %s", r.Tx.GetValue(), r.Tx.GetSender(), r.Tx.GetRecipient())
 
 	var except NodeID
 	if nodeID := r.GetNodeID(); nodeID != nil {
@@ -93,7 +94,16 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 	}
 	n.propagateTx(r.Tx, except)
 
-	return &pb.ShareTxResponse{Accepted: true}, nil
+	return &pb.ShareTxResponse{
+		Accepted: true,
+		Info:     fmt.Sprintf("Pubkey will own %v after tx committed in next block", n.getCreditFor(r.Tx.GetSender())),
+	}, nil
+}
+
+func (n *node) GetCredit(ctx context.Context, r *pb.GetCreditRequest) (*pb.GetCreditResponse, error) {
+	return &pb.GetCreditResponse{
+		Value: n.getCreditFor(r.GetPubkey()),
+	}, nil
 }
 
 // getPeerAddr is currently a remnant of an attempt to discover requesting peer's

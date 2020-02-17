@@ -52,6 +52,7 @@ service Node {
     rpc GetState(GetStateRequest) returns (GetStateResponse);
     rpc ShareChain(ShareChainRequest) returns (ShareChainResponse);
     rpc ShareTx(ShareTxRequest) returns (ShareTxResponse);
+    rpc GetCredit(GetCreditRequest) returns (GetCreditResponse);
 }
 
 message DiscoverRequest {
@@ -97,4 +98,13 @@ message ShareTxRequest {
 message ShareTxResponse {
     bool accepted = 1;
     string info = 2;
+}
+
+message GetCreditRequest {
+    NodeID nodeID = 1;
+    string pubkey = 2;
+}
+
+message GetCreditResponse {
+    double value = 1;
 }
