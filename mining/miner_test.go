@@ -18,8 +18,8 @@ func TestMine(t *testing.T) {
 	mockHasher := mocks.NewMockHasher(ctrl)
 
 	type minerSetup struct {
-		prevBlock *chain.Block
-		target    []byte
+		prevHash []byte
+		target   []byte
 	}
 
 	type mockHashCall struct {
@@ -39,8 +39,8 @@ func TestMine(t *testing.T) {
 		{
 			name: "Hashing to the exact target is a successful solve, first try",
 			minerSetup: minerSetup{
-				prevBlock: &chain.Block{},
-				target:    []byte{123, 234},
+				prevHash: []byte{},
+				target:   []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
@@ -54,8 +54,8 @@ func TestMine(t *testing.T) {
 		{
 			name: "Hashing to the exact target is a successful solve, third try",
 			minerSetup: minerSetup{
-				prevBlock: &chain.Block{},
-				target:    []byte{123, 234},
+				prevHash: []byte{},
+				target:   []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
@@ -75,8 +75,8 @@ func TestMine(t *testing.T) {
 		{
 			name: "Lucky first hash, no luck afterwards",
 			minerSetup: minerSetup{
-				prevBlock: &chain.Block{},
-				target:    []byte{123, 234},
+				prevHash: []byte{},
+				target:   []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
@@ -96,8 +96,8 @@ func TestMine(t *testing.T) {
 		{
 			name: "5 unsuccessful hashes yield no solves",
 			minerSetup: minerSetup{
-				prevBlock: &chain.Block{},
-				target:    []byte{123, 234},
+				prevHash: []byte{},
+				target:   []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
@@ -123,8 +123,8 @@ func TestMine(t *testing.T) {
 		{
 			name: "5 successful hashes yields 5 solves",
 			minerSetup: minerSetup{
-				prevBlock: &chain.Block{},
-				target:    []byte{123, 234},
+				prevHash: []byte{},
+				target:   []byte{123, 234},
 			},
 			mockHashCalls: []mockHashCall{
 				{
@@ -170,9 +170,9 @@ func TestMine(t *testing.T) {
 			}
 
 			m := &miner{
-				prevBlock: c.minerSetup.prevBlock,
-				target:    c.minerSetup.target,
-				hasher:    mockHasher,
+				prevHash: c.minerSetup.prevHash,
+				target:   c.minerSetup.target,
+				hasher:   mockHasher,
 			}
 
 			go m.Mine(ctx, conveyor)

@@ -15,7 +15,7 @@ type Chain struct {
 func NewChain(hasher Hasher) *Chain {
 	genesis := NewBlock(
 		hasher,
-		&Block{},
+		[]byte{},
 		[]*pb.Tx{},
 		0,
 		[]byte{},

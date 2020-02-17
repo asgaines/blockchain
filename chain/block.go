@@ -12,7 +12,7 @@ import (
 type Block pb.Block
 
 // NewBlock instantiates a Block from a payload
-func NewBlock(hasher Hasher, prev *Block, txs []*pb.Tx, nonce uint64, target []byte, pubkey string) *Block {
+func NewBlock(hasher Hasher, prevHash []byte, txs []*pb.Tx, nonce uint64, target []byte, pubkey string) *Block {
 	txHashes := []byte{}
 	for _, tx := range txs {
 		txHashes = append(txHashes, tx.Hash...)
@@ -23,14 +23,12 @@ func NewBlock(hasher Hasher, prev *Block, txs []*pb.Tx, nonce uint64, target []b
 
 	b := &Block{
 		Timestamp:  ptypes.TimestampNow(),
-		Prevhash:   prev.Hash,
+		Prevhash:   prevHash,
 		Nonce:      nonce,
 		Target:     target,
 		MerkleRoot: merkleRoot[:],
 		Txs:        txs,
 	}
-
-	b.Hash = hasher.Hash(b)
 
 	return b
 }

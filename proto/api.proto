@@ -9,12 +9,11 @@ import "google/protobuf/timestamp.proto";
 
 message Block {
 	google.protobuf.Timestamp timestamp = 1;
-	bytes hash = 2;
-	bytes prevhash = 3;
-	uint64 nonce = 4;
-	bytes target = 5;
-	bytes merkleRoot = 6;
-	repeated Tx txs = 7;
+	bytes prevhash = 2;
+	uint64 nonce = 3;
+	bytes target = 4;
+	bytes merkleRoot = 5;
+	repeated Tx txs = 6;
 }
 
 message Chain {

@@ -75,7 +75,7 @@ func (n *node) logBlock(block *chain.Block) {
 		minedBy = fmt.Sprintf("%s (you)", minedBy)
 	}
 
-	log.Printf("%064x (%vs) [%s]\n", block.Hash, lastLinkDur.Seconds(), minedBy)
+	log.Printf("%064x (%vs) [%s]\n", n.hasher.Hash(block), lastLinkDur.Seconds(), minedBy)
 }
 
 func (n *node) setChain(chain *chain.Chain, trusted bool) bool {
@@ -114,8 +114,10 @@ func (n *node) updateTarget(difficulty float64) {
 }
 
 func (n *node) updatePrevBlock(block *chain.Block) {
+	hash := n.hasher.Hash(block)
+
 	for _, miner := range n.miners {
-		miner.SetPrevBlock(block)
+		miner.SetPrevBlockHash(hash)
 	}
 }
 
@@ -126,12 +128,10 @@ func (n *node) IsValid(c *chain.Chain) bool {
 
 	for i, block := range c.Pbc.Blocks[1:] {
 		prev := c.Pbc.Blocks[i]
-
 		prevhash := n.hasher.Hash((*chain.Block)(prev))
+
 		if !bytes.Equal(prevhash, block.Prevhash) ||
-			!bytes.Equal(prevhash, prev.Hash) ||
-			!bytes.Equal(block.Hash, n.hasher.Hash((*chain.Block)(block))) ||
-			bytes.Compare(block.Hash, block.Target) == 1 {
+			bytes.Compare(n.hasher.Hash((*chain.Block)(block)), block.Target) == 1 {
 			return false
 		}
 	}

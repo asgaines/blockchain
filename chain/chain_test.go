@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"math/big"
 	"reflect"
 	"testing"
 
@@ -20,13 +19,13 @@ func TestLastLink(t *testing.T) {
 				Pbc: &pb.Chain{
 					Blocks: []*pb.Block{
 						{
-							Hash: new(big.Int).SetInt64(12345).Bytes(),
+							Nonce: 123,
 						},
 					},
 				},
 			},
 			expected: &Block{
-				Hash: new(big.Int).SetInt64(12345).Bytes(),
+				Nonce: 123,
 			},
 		},
 		{
@@ -35,16 +34,16 @@ func TestLastLink(t *testing.T) {
 				Pbc: &pb.Chain{
 					Blocks: []*pb.Block{
 						{
-							Hash: new(big.Int).SetInt64(12345).Bytes(),
+							Nonce: 123,
 						},
 						{
-							Hash: new(big.Int).SetInt64(23456).Bytes(),
+							Nonce: 456,
 						},
 					},
 				},
 			},
 			expected: &Block{
-				Hash: new(big.Int).SetInt64(23456).Bytes(),
+				Nonce: 456,
 			},
 		},
 	}
@@ -81,7 +80,7 @@ func TestLength(t *testing.T) {
 				Pbc: &pb.Chain{
 					Blocks: []*pb.Block{
 						{
-							Hash: new(big.Int).SetInt64(12345).Bytes(),
+							Nonce: 123,
 						},
 					},
 				},
@@ -94,10 +93,10 @@ func TestLength(t *testing.T) {
 				Pbc: &pb.Chain{
 					Blocks: []*pb.Block{
 						{
-							Hash: new(big.Int).SetInt64(12345).Bytes(),
+							Nonce: 123,
 						},
 						{
-							Hash: new(big.Int).SetInt64(23456).Bytes(),
+							Nonce: 456,
 						},
 					},
 				},

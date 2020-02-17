@@ -51,6 +51,10 @@ func (n *node) ShareChain(ctx context.Context, r *pb.ShareChainRequest) (*pb.Sha
 }
 
 func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxResponse, error) {
+	if r.GetTx() == nil {
+		return nil, errors.New("missing tx from request")
+	}
+
 	if r.Tx.GetTimestamp() == nil {
 		r.Tx.Timestamp = ptypes.TimestampNow()
 	}

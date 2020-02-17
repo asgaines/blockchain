@@ -22,6 +22,7 @@ func TestMine(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockMiner := mm.NewMockMiner(ctrl)
+	mockHasher := mocks.NewMockHasher(ctrl)
 
 	type nodeSetup struct {
 		chain             *chain.Chain
@@ -37,7 +38,7 @@ func TestMine(t *testing.T) {
 		setTarget struct {
 			difficulties []float64
 		}
-		setPrevBlock struct {
+		setPrevBlockHash struct {
 			times int
 		}
 		clearTxs struct {
@@ -90,7 +91,7 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{100},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 1,
@@ -140,7 +141,7 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{200},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 1,
@@ -200,7 +201,7 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{97.71986970715871},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 3,
@@ -260,7 +261,7 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{100.67114093993514},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 3,
@@ -320,7 +321,7 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{100.67114093993514},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 3,
@@ -380,7 +381,7 @@ func TestMine(t *testing.T) {
 				}{
 					difficulties: []float64{200},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 3,
@@ -448,7 +449,7 @@ func TestMine(t *testing.T) {
 						(100 * (float64(2) / float64(3))) * 2,
 					},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 4,
@@ -501,7 +502,7 @@ func TestMine(t *testing.T) {
 						2000,
 					},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 1,
@@ -582,7 +583,7 @@ func TestMine(t *testing.T) {
 						666 + (float64(2) / float64(3)),
 					},
 				},
-				setPrevBlock: struct {
+				setPrevBlockHash: struct {
 					times int
 				}{
 					times: 5,
@@ -603,6 +604,7 @@ func TestMine(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
+			mockHasher.EXPECT().Hash(gomock.Any()).AnyTimes()
 			mockMiner.EXPECT().Mine(ctx, gomock.Any()).
 				Do(func(ctx context.Context, conveyor chan<- mining.BlockReport) {
 					defer cancel()
@@ -619,7 +621,7 @@ func TestMine(t *testing.T) {
 			for _, difficulty := range c.mockCalls.setTarget.difficulties {
 				mockMiner.EXPECT().SetTarget(difficulty)
 			}
-			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockCalls.setPrevBlock.times)
+			mockMiner.EXPECT().SetPrevBlockHash(gomock.Any()).Times(c.mockCalls.setPrevBlockHash.times)
 			mockMiner.EXPECT().SetTxs(gomock.Any()).Times(c.mockCalls.clearTxs.times)
 
 			n := &node{
@@ -628,6 +630,7 @@ func TestMine(t *testing.T) {
 				recalcPeriod:      c.nodeSetup.recalcPeriod,
 				difficulty:        c.nodeSetup.difficulty,
 				miners:            []mining.Miner{mockMiner},
+				hasher:            mockHasher,
 			}
 
 			n.mine(ctx)
@@ -666,7 +669,7 @@ func TestIsValid(t *testing.T) {
 			want:          false,
 		},
 		{
-			name: "Chain with valid hashing and prev hash reference is valid",
+			name: "Chain which meets target but has the actual previous block hash to a value different from prevhash is invalid",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -674,17 +677,16 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+							Nonce: 1948111840464954436,
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:      12345,
+							Prevhash:   new(big.Int).SetUint64(948111840464954436).Bytes(),
+							Nonce:      13857702854592346750,
 							Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
 							MerkleRoot: []byte{},
-							Hash:       new(big.Int).SetUint64(13857702854592346750).Bytes(),
 						},
 					},
 				},
@@ -695,7 +697,43 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+						Nonce: 1948111840464954436,
+					},
+					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Chain with valid prev hash reference and meeting of target is valid",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646459200,
+							},
+							Nonce: 1948111840464954436,
+						},
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646469200,
+							},
+							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
+							Nonce:      13857702854592346750,
+							Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+							MerkleRoot: []byte{},
+						},
+					},
+				},
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646459200,
+						},
+						Nonce: 1948111840464954436,
 					},
 					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 				},
@@ -705,10 +743,9 @@ func TestIsValid(t *testing.T) {
 							Seconds: 646469200,
 						},
 						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:      12345,
+						Nonce:      13857702854592346750,
 						Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
 						MerkleRoot: []byte{},
-						Hash:       new(big.Int).SetUint64(13857702854592346750).Bytes(),
 					},
 					out: new(big.Int).SetUint64(13857702854592346750).Bytes(),
 				},
@@ -716,7 +753,7 @@ func TestIsValid(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "Chain with hash reported differently from actual hash result is not valid",
+			name: "Chain with valid hash missing (overshooting) the difficulty's target is not valid",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -724,67 +761,16 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+							Nonce: 1948111840464954436,
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
 							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:      12345,
-							Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
-							MerkleRoot: []byte{},
-							Hash:       new(big.Int).SetUint64(13857702854592346751).Bytes(),
-						},
-					},
-				},
-			},
-			mockHashCalls: []mockHashCall{
-				{
-					in: &chain.Block{
-						Timestamp: &timestamp.Timestamp{
-							Seconds: 646459200,
-						},
-						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-					},
-					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-				},
-				{
-					in: &chain.Block{
-						Timestamp: &timestamp.Timestamp{
-							Seconds: 646469200,
-						},
-						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:      12345,
-						Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
-						MerkleRoot: []byte{},
-						Hash:       new(big.Int).SetUint64(13857702854592346751).Bytes(),
-					},
-					out: new(big.Int).SetUint64(13857702854592346750).Bytes(),
-				},
-			},
-			want: false,
-		},
-		{
-			name: "Chain with valid hash but missing (overshooting) the difficulty's target is not valid",
-			chain: &chain.Chain{
-				Pbc: &blockchain.Chain{
-					Blocks: []*pb.Block{
-						&pb.Block{
-							Timestamp: &timestamp.Timestamp{
-								Seconds: 646459200,
-							},
-							Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						},
-						&pb.Block{
-							Timestamp: &timestamp.Timestamp{
-								Seconds: 646469200,
-							},
-							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:      123456789,
+							Nonce:      16295015879318905250,
 							Target:     new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
 							MerkleRoot: []byte{},
-							Hash:       new(big.Int).SetUint64(16295015879318905250).Bytes(),
 						},
 					},
 				},
@@ -795,7 +781,7 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Hash: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+						Nonce: 1948111840464954436,
 					},
 					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
 				},
@@ -805,10 +791,9 @@ func TestIsValid(t *testing.T) {
 							Seconds: 646469200,
 						},
 						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:      123456789,
+						Nonce:      16295015879318905250,
 						Target:     new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
 						MerkleRoot: []byte{},
-						Hash:       new(big.Int).SetUint64(16295015879318905250).Bytes(),
 					},
 					out: new(big.Int).SetUint64(16295015879318905250).Bytes(),
 				},
@@ -864,9 +849,9 @@ func TestSetChain(t *testing.T) {
 	}
 
 	type mockMinerCalls struct {
-		numClearTxs     int
-		numSetTarget    int
-		numSetPrevBlock int
+		numClearTxs         int
+		numSetTarget        int
+		numSetPrevBlockHash int
 	}
 
 	cases := []struct {
@@ -884,7 +869,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 						},
 					},
@@ -896,7 +881,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 321,
 							},
 						},
 					},
@@ -905,9 +890,9 @@ func TestSetChain(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{},
 			mockMinerCalls: mockMinerCalls{
-				numSetPrevBlock: 0,
-				numClearTxs:     0,
-				numSetTarget:    0,
+				numSetPrevBlockHash: 0,
+				numClearTxs:         0,
+				numSetTarget:        0,
 			},
 			expectedReplace: false,
 		},
@@ -918,7 +903,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 						},
 					},
@@ -930,7 +915,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 321,
 							},
 						},
 					},
@@ -939,9 +924,9 @@ func TestSetChain(t *testing.T) {
 			},
 			mockHashCalls: []mockHashCall{},
 			mockMinerCalls: mockMinerCalls{
-				numSetPrevBlock: 0,
-				numClearTxs:     0,
-				numSetTarget:    0,
+				numSetPrevBlockHash: 0,
+				numClearTxs:         0,
+				numSetTarget:        0,
 			},
 			expectedReplace: false,
 		},
@@ -952,7 +937,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 						},
 					},
@@ -964,10 +949,10 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 							&pb.Block{
-								Hash:     []byte{2, 3, 4},
+								Nonce:    234,
 								Prevhash: []byte{1, 2, 3},
 							},
 						},
@@ -978,74 +963,22 @@ func TestSetChain(t *testing.T) {
 			mockHashCalls: []mockHashCall{
 				{
 					in: &chain.Block{
-						Hash: []byte{1, 2, 3},
+						Nonce: 123,
 					},
 					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
-						Hash:     []byte{2, 3, 4},
+						Nonce:    234,
 						Prevhash: []byte{1, 2, 3},
 					},
 					out: []byte{2, 3, 4},
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numSetPrevBlock: 0,
-				numClearTxs:     0,
-				numSetTarget:    0,
-			},
-			expectedReplace: false,
-		},
-		{
-			name: "Invalid chain hash (correct length) does not replace old chain",
-			nodeSetup: nodeSetup{
-				chain: &chain.Chain{
-					Pbc: &pb.Chain{
-						Blocks: []*pb.Block{
-							&pb.Block{
-								Hash: []byte{1, 2, 3},
-							},
-						},
-					},
-				},
-				recalcPeriod: 1,
-			},
-			input: input{
-				chain: &chain.Chain{
-					Pbc: &pb.Chain{
-						Blocks: []*pb.Block{
-							&pb.Block{
-								Hash: []byte{1, 2, 3},
-							},
-							&pb.Block{
-								Hash:     []byte{9, 9, 9},
-								Prevhash: []byte{1, 2, 3},
-							},
-						},
-					},
-				},
-				trusted: false,
-			},
-			mockHashCalls: []mockHashCall{
-				{
-					in: &chain.Block{
-						Hash: []byte{1, 2, 3},
-					},
-					out: []byte{1, 2, 3},
-				},
-				{
-					in: &chain.Block{
-						Hash:     []byte{9, 9, 9},
-						Prevhash: []byte{1, 2, 3},
-					},
-					out: []byte{2, 3, 4},
-				},
-			},
-			mockMinerCalls: mockMinerCalls{
-				numSetPrevBlock: 0,
-				numClearTxs:     0,
-				numSetTarget:    0,
+				numSetPrevBlockHash: 0,
+				numClearTxs:         0,
+				numSetTarget:        0,
 			},
 			expectedReplace: false,
 		},
@@ -1056,7 +989,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 						},
 					},
@@ -1068,10 +1001,10 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 							&pb.Block{
-								Hash:     []byte{2, 3, 4},
+								Nonce:    234,
 								Prevhash: []byte{1, 2, 3},
 								Target:   []byte{2, 3, 4},
 							},
@@ -1083,13 +1016,30 @@ func TestSetChain(t *testing.T) {
 			mockHashCalls: []mockHashCall{
 				{
 					in: &chain.Block{
-						Hash: []byte{1, 2, 3},
+						Nonce: 123,
 					},
 					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
-						Hash:     []byte{2, 3, 4},
+						Nonce:    234,
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out: []byte{2, 3, 4},
+				},
+				// Next two for non-validation hashes
+				{
+					in: &chain.Block{
+						Nonce:    234,
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out: []byte{2, 3, 4},
+				},
+				{
+					in: &chain.Block{
+						Nonce:    234,
 						Prevhash: []byte{1, 2, 3},
 						Target:   []byte{2, 3, 4},
 					},
@@ -1097,9 +1047,9 @@ func TestSetChain(t *testing.T) {
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numSetPrevBlock: 1,
-				numClearTxs:     1,
-				numSetTarget:    1,
+				numSetPrevBlockHash: 1,
+				numClearTxs:         1,
+				numSetTarget:        1,
 			},
 			expectedReplace: true,
 		},
@@ -1110,7 +1060,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 						},
 					},
@@ -1122,20 +1072,20 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 							&pb.Block{
-								Hash:     []byte{2, 3, 4},
+								Nonce:    234,
 								Prevhash: []byte{1, 2, 3},
 								Target:   []byte{2, 3, 4},
 							},
 							&pb.Block{
-								Hash:     []byte{3, 4, 5},
+								Nonce:    345,
 								Prevhash: []byte{2, 3, 4},
 								Target:   []byte{3, 4, 5},
 							},
 							&pb.Block{
-								Hash:     []byte{4, 5, 6},
+								Nonce:    456,
 								Prevhash: []byte{3, 4, 5},
 								Target:   []byte{4, 5, 6},
 							},
@@ -1147,7 +1097,54 @@ func TestSetChain(t *testing.T) {
 			mockHashCalls: []mockHashCall{
 				{
 					in: &chain.Block{
-						Hash:     []byte{4, 5, 6},
+						Nonce: 123,
+					},
+					out: []byte{1, 2, 3},
+				},
+				{
+					in: &chain.Block{
+						Nonce:    234,
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out: []byte{2, 3, 4},
+				},
+				{
+					in: &chain.Block{
+						Nonce:    234,
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out: []byte{2, 3, 4},
+				},
+				{
+					in: &chain.Block{
+						Nonce:    345,
+						Prevhash: []byte{2, 3, 4},
+						Target:   []byte{3, 4, 5},
+					},
+					out: []byte{3, 4, 5},
+				},
+				{
+					in: &chain.Block{
+						Nonce:    345,
+						Prevhash: []byte{2, 3, 4},
+						Target:   []byte{3, 4, 5},
+					},
+					out: []byte{3, 4, 5},
+				},
+				{
+					in: &chain.Block{
+						Nonce:    456,
+						Prevhash: []byte{3, 4, 5},
+						Target:   []byte{4, 5, 6},
+					},
+					out: []byte{4, 5, 6},
+				},
+				// Next two for non-validation hashes
+				{
+					in: &chain.Block{
+						Nonce:    456,
 						Prevhash: []byte{3, 4, 5},
 						Target:   []byte{4, 5, 6},
 					},
@@ -1155,47 +1152,17 @@ func TestSetChain(t *testing.T) {
 				},
 				{
 					in: &chain.Block{
-						Hash:     []byte{3, 4, 5},
-						Prevhash: []byte{2, 3, 4},
-						Target:   []byte{3, 4, 5},
+						Nonce:    456,
+						Prevhash: []byte{3, 4, 5},
+						Target:   []byte{4, 5, 6},
 					},
-					out: []byte{3, 4, 5},
-				},
-				{
-					in: &chain.Block{
-						Hash:     []byte{3, 4, 5},
-						Prevhash: []byte{2, 3, 4},
-						Target:   []byte{3, 4, 5},
-					},
-					out: []byte{3, 4, 5},
-				},
-				{
-					in: &chain.Block{
-						Hash:     []byte{2, 3, 4},
-						Prevhash: []byte{1, 2, 3},
-						Target:   []byte{2, 3, 4},
-					},
-					out: []byte{2, 3, 4},
-				},
-				{
-					in: &chain.Block{
-						Hash:     []byte{2, 3, 4},
-						Prevhash: []byte{1, 2, 3},
-						Target:   []byte{2, 3, 4},
-					},
-					out: []byte{2, 3, 4},
-				},
-				{
-					in: &chain.Block{
-						Hash: []byte{1, 2, 3},
-					},
-					out: []byte{1, 2, 3},
+					out: []byte{4, 5, 6},
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numSetPrevBlock: 1,
-				numClearTxs:     1,
-				numSetTarget:    1,
+				numSetPrevBlockHash: 1,
+				numClearTxs:         1,
+				numSetTarget:        1,
 			},
 			expectedReplace: true,
 		},
@@ -1206,7 +1173,7 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 						},
 					},
@@ -1218,10 +1185,10 @@ func TestSetChain(t *testing.T) {
 					Pbc: &pb.Chain{
 						Blocks: []*pb.Block{
 							&pb.Block{
-								Hash: []byte{1, 2, 3},
+								Nonce: 123,
 							},
 							&pb.Block{
-								Hash:     []byte{2, 3, 4},
+								Nonce:    234,
 								Prevhash: []byte{1, 2, 3},
 								Target:   []byte{2, 3, 4},
 							},
@@ -1233,13 +1200,30 @@ func TestSetChain(t *testing.T) {
 			mockHashCalls: []mockHashCall{
 				{
 					in: &chain.Block{
-						Hash: []byte{1, 2, 3},
+						Nonce: 123,
 					},
 					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
-						Hash:     []byte{2, 3, 4},
+						Nonce:    234,
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out: []byte{2, 3, 4},
+				},
+				// Next two for non-validation hashes
+				{
+					in: &chain.Block{
+						Nonce:    234,
+						Prevhash: []byte{1, 2, 3},
+						Target:   []byte{2, 3, 4},
+					},
+					out: []byte{2, 3, 4},
+				},
+				{
+					in: &chain.Block{
+						Nonce:    234,
 						Prevhash: []byte{1, 2, 3},
 						Target:   []byte{2, 3, 4},
 					},
@@ -1247,9 +1231,9 @@ func TestSetChain(t *testing.T) {
 				},
 			},
 			mockMinerCalls: mockMinerCalls{
-				numSetPrevBlock: 1,
-				numClearTxs:     1,
-				numSetTarget:    0,
+				numSetPrevBlockHash: 1,
+				numClearTxs:         1,
+				numSetTarget:        0,
 			},
 			expectedReplace: true,
 		},
@@ -1261,7 +1245,7 @@ func TestSetChain(t *testing.T) {
 				mockHasher.EXPECT().Hash(call.in).Return(call.out)
 			}
 
-			mockMiner.EXPECT().SetPrevBlock(gomock.Any()).Times(c.mockMinerCalls.numSetPrevBlock)
+			mockMiner.EXPECT().SetPrevBlockHash(gomock.Any()).Times(c.mockMinerCalls.numSetPrevBlockHash)
 			mockMiner.EXPECT().SetTarget(gomock.Any()).Times(c.mockMinerCalls.numSetTarget)
 			mockMiner.EXPECT().SetTxs(gomock.Any()).Times(c.mockMinerCalls.numClearTxs)
 

@@ -6,7 +6,6 @@ package mocks
 
 import (
 	context "context"
-	chain "github.com/asgaines/blockchain/chain"
 	mining "github.com/asgaines/blockchain/mining"
 	blockchain "github.com/asgaines/blockchain/protogo/blockchain"
 	gomock "github.com/golang/mock/gomock"
@@ -48,16 +47,16 @@ func (mr *MockMinerMockRecorder) Mine(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Mine", reflect.TypeOf((*MockMiner)(nil).Mine), arg0, arg1)
 }
 
-// SetPrevBlock mocks base method
-func (m *MockMiner) SetPrevBlock(arg0 *chain.Block) {
+// SetPrevBlockHash mocks base method
+func (m *MockMiner) SetPrevBlockHash(arg0 []byte) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPrevBlock", arg0)
+	m.ctrl.Call(m, "SetPrevBlockHash", arg0)
 }
 
-// SetPrevBlock indicates an expected call of SetPrevBlock
-func (mr *MockMinerMockRecorder) SetPrevBlock(arg0 interface{}) *gomock.Call {
+// SetPrevBlockHash indicates an expected call of SetPrevBlockHash
+func (mr *MockMinerMockRecorder) SetPrevBlockHash(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPrevBlock", reflect.TypeOf((*MockMiner)(nil).SetPrevBlock), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPrevBlockHash", reflect.TypeOf((*MockMiner)(nil).SetPrevBlockHash), arg0)
 }
 
 // SetTarget mocks base method

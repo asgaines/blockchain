@@ -25,7 +25,7 @@ var MaxTarget = new(big.Int).SetBytes([]byte{
 //go:generate mockgen -destination=./mocks/miner_mock.go -package=mocks github.com/asgaines/blockchain/mining Miner
 type Miner interface {
 	Mine(ctx context.Context, mineshaft chan<- BlockReport)
-	SetPrevBlock(block *chain.Block)
+	SetPrevBlockHash(hash []byte)
 	SetTarget(difficulty float64) error
 	SetTxs(txs []*pb.Tx)
 }
@@ -50,7 +50,7 @@ func NewMiner(ID int, pubkey string, targetDurPerBlock time.Duration, hashSpeed 
 
 type miner struct {
 	ID        int
-	prevBlock *chain.Block
+	prevHash  []byte
 	pubkey    string
 	target    []byte
 	nonce     uint64
@@ -81,33 +81,35 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 
 		candidate := chain.NewBlock(
 			m.hasher,
-			m.prevBlock,
+			m.prevHash,
 			m.txs,
 			m.nonce,
 			m.target,
 			m.pubkey,
 		)
 
-		hb := new(big.Int).SetBytes(candidate.Hash)
-		tb := new(big.Int).SetBytes(m.target)
+		hash := m.hasher.Hash(candidate)
+
+		hashBI := new(big.Int).SetBytes(hash)
+		targetBI := new(big.Int).SetBytes(m.target)
 
 		// Block is considered solved if the generated hash is less than or equal
 		// to the target value
-		cmp := hb.Cmp(tb)
+		cmp := hashBI.Cmp(targetBI)
 		if solved := cmp == 0 || cmp == -1; solved {
 			conveyor <- BlockReport{
 				ID:    m.ID,
 				Block: candidate,
 			}
-			m.SetPrevBlock(candidate)
+			m.SetPrevBlockHash(hash[:])
 		} else {
 			m.nonce++
 		}
 	}
 }
 
-func (m *miner) SetPrevBlock(block *chain.Block) {
-	m.prevBlock = block
+func (m *miner) SetPrevBlockHash(hash []byte) {
+	m.prevHash = hash
 	m.nonce = 0
 }
 

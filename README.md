@@ -14,7 +14,7 @@ Two options: pull or build
 
 `docker build -t asgaines/blockchain:latest`
 
-## Run
+## Run Node
 
 `docker run -p 20403:20403 --rm -v ${PWD}/blockchain:/go/src/github.com/asgaines/blockchain -e BLOCKCHAIN_KEY=<your-key> asgaines/blockchain:latest -returnAddr=<your-ip-or-host>:20403 -seedAddrs=<comma-separated-peer-addrs>`
 
@@ -49,3 +49,9 @@ Options:
   -targetdur duration
     	The desired amount of time between block mining events; controls the difficulty of the mining (default 10s)
 ```
+
+## Node Client
+
+Interact with the node directly. Uses gRPC Cobra client interface.
+
+`docker run -i --rm --entrypoint="" asgaines/blockchain:latest go run client/main.go node sharetx -s <node-ip>:20403 <<< '{"tx": {"value": <amount-to-transfer>, "sender": "<your-pubkey>", "recipient": "<recipient-pubkey>", "message": "<optional-metadata>"}}'`

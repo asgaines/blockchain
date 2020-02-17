@@ -132,9 +132,10 @@ func (n *node) Run(ctx context.Context) {
 	n.resetTxpool()
 
 	log.Println("Initializing mining...")
+	prevHash := n.hasher.Hash(n.chain.LastLink())
 	for _, miner := range n.miners {
 		miner.SetTarget(n.difficulty)
-		miner.SetPrevBlock(n.chain.LastLink())
+		miner.SetPrevBlockHash(prevHash)
 	}
 
 	var wg sync.WaitGroup
