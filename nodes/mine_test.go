@@ -2,7 +2,6 @@ package nodes
 
 import (
 	"context"
-	"math/big"
 	"reflect"
 	"testing"
 	"time"
@@ -677,15 +676,15 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Nonce: 1948111840464954436,
+							Nonce: 123,
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash:   new(big.Int).SetUint64(948111840464954436).Bytes(),
-							Nonce:      13857702854592346750,
-							Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+							Prevhash:   []byte{1, 2, 4},
+							Nonce:      456,
+							Target:     []byte{5, 5, 5},
 							MerkleRoot: []byte{},
 						},
 					},
@@ -697,15 +696,27 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Nonce: 1948111840464954436,
+						Nonce: 123,
 					},
-					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+					out: []byte{1, 2, 3},
+				},
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646469200,
+						},
+						Prevhash:   []byte{1, 2, 4},
+						Nonce:      456,
+						Target:     []byte{5, 5, 5},
+						MerkleRoot: []byte{},
+					},
+					out: []byte{4, 5, 6},
 				},
 			},
 			want: false,
 		},
 		{
-			name: "Chain with valid prev hash reference and meeting of target is valid",
+			name: "Chain with valid prev hash reference and hash below target is valid",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -713,15 +724,15 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Nonce: 1948111840464954436,
+							Nonce: 123,
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:      13857702854592346750,
-							Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+							Prevhash:   []byte{1, 2, 3},
+							Nonce:      456,
+							Target:     []byte{4, 5, 7},
 							MerkleRoot: []byte{},
 						},
 					},
@@ -733,27 +744,27 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Nonce: 1948111840464954436,
+						Nonce: 123,
 					},
-					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:      13857702854592346750,
-						Target:     new(big.Int).SetUint64(18446744073709551615).Bytes(),
+						Prevhash:   []byte{1, 2, 3},
+						Nonce:      456,
+						Target:     []byte{4, 5, 7},
 						MerkleRoot: []byte{},
 					},
-					out: new(big.Int).SetUint64(13857702854592346750).Bytes(),
+					out: []byte{4, 5, 6},
 				},
 			},
 			want: true,
 		},
 		{
-			name: "Chain with valid hash missing (overshooting) the difficulty's target is not valid",
+			name: "Chain with valid prev hash reference and hash exactly equal to target is valid",
 			chain: &chain.Chain{
 				Pbc: &blockchain.Chain{
 					Blocks: []*pb.Block{
@@ -761,15 +772,15 @@ func TestIsValid(t *testing.T) {
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646459200,
 							},
-							Nonce: 1948111840464954436,
+							Nonce: 123,
 						},
 						&pb.Block{
 							Timestamp: &timestamp.Timestamp{
 								Seconds: 646469200,
 							},
-							Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-							Nonce:      16295015879318905250,
-							Target:     new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
+							Prevhash:   []byte{1, 2, 3},
+							Nonce:      456,
+							Target:     []byte{4, 5, 6},
 							MerkleRoot: []byte{},
 						},
 					},
@@ -781,21 +792,69 @@ func TestIsValid(t *testing.T) {
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646459200,
 						},
-						Nonce: 1948111840464954436,
+						Nonce: 123,
 					},
-					out: new(big.Int).SetUint64(1948111840464954436).Bytes(),
+					out: []byte{1, 2, 3},
 				},
 				{
 					in: &chain.Block{
 						Timestamp: &timestamp.Timestamp{
 							Seconds: 646469200,
 						},
-						Prevhash:   new(big.Int).SetUint64(1948111840464954436).Bytes(),
-						Nonce:      16295015879318905250,
-						Target:     new(big.Int).SetUint64(0).Bytes(), // Hardest possible target, requires full hash collision
+						Prevhash:   []byte{1, 2, 3},
+						Nonce:      456,
+						Target:     []byte{4, 5, 6},
 						MerkleRoot: []byte{},
 					},
-					out: new(big.Int).SetUint64(16295015879318905250).Bytes(),
+					out: []byte{4, 5, 6},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Chain with valid prevhash but missing (overshooting) the target is not valid",
+			chain: &chain.Chain{
+				Pbc: &blockchain.Chain{
+					Blocks: []*pb.Block{
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646459200,
+							},
+							Nonce: 123,
+						},
+						&pb.Block{
+							Timestamp: &timestamp.Timestamp{
+								Seconds: 646469200,
+							},
+							Prevhash:   []byte{1, 2, 3},
+							Nonce:      456,
+							Target:     []byte{9, 9},
+							MerkleRoot: []byte{},
+						},
+					},
+				},
+			},
+			mockHashCalls: []mockHashCall{
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646459200,
+						},
+						Nonce: 123,
+					},
+					out: []byte{1, 2, 3},
+				},
+				{
+					in: &chain.Block{
+						Timestamp: &timestamp.Timestamp{
+							Seconds: 646469200,
+						},
+						Prevhash:   []byte{1, 2, 3},
+						Nonce:      456,
+						Target:     []byte{9, 9},
+						MerkleRoot: []byte{},
+					},
+					out: []byte{4, 5, 6},
 				},
 			},
 			want: false,

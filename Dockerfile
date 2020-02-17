@@ -2,6 +2,8 @@ FROM golang:1.13
 
 WORKDIR /go/src/github.com/asgaines/blockchain
 
+RUN mkdir /storage
+
 COPY go.mod go.sum ./
 RUN go mod download
 

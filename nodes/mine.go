@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/big"
 	"sync"
 	"time"
 
@@ -129,9 +130,13 @@ func (n *node) IsValid(c *chain.Chain) bool {
 	for i, block := range c.Pbc.Blocks[1:] {
 		prev := c.Pbc.Blocks[i]
 		prevhash := n.hasher.Hash((*chain.Block)(prev))
+		blockHash := n.hasher.Hash((*chain.Block)(block))
+
+		blockHashBI := new(big.Int).SetBytes(blockHash)
+		targetBI := new(big.Int).SetBytes(block.Target)
 
 		if !bytes.Equal(prevhash, block.Prevhash) ||
-			bytes.Compare(n.hasher.Hash((*chain.Block)(block)), block.Target) == 1 {
+			blockHashBI.Cmp(targetBI) == 1 {
 			return false
 		}
 	}
