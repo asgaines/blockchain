@@ -47,18 +47,6 @@ func (mr *MockMinerMockRecorder) Mine(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Mine", reflect.TypeOf((*MockMiner)(nil).Mine), arg0, arg1)
 }
 
-// SetPrevBlockHash mocks base method
-func (m *MockMiner) SetPrevBlockHash(arg0 []byte) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetPrevBlockHash", arg0)
-}
-
-// SetPrevBlockHash indicates an expected call of SetPrevBlockHash
-func (mr *MockMinerMockRecorder) SetPrevBlockHash(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetPrevBlockHash", reflect.TypeOf((*MockMiner)(nil).SetPrevBlockHash), arg0)
-}
-
 // SetTarget mocks base method
 func (m *MockMiner) SetTarget(arg0 float64) error {
 	m.ctrl.T.Helper()
@@ -83,4 +71,16 @@ func (m *MockMiner) SetTxs(arg0 []*blockchain.Tx) {
 func (mr *MockMinerMockRecorder) SetTxs(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxs", reflect.TypeOf((*MockMiner)(nil).SetTxs), arg0)
+}
+
+// UpdatePrevHash mocks base method
+func (m *MockMiner) UpdatePrevHash(arg0 []byte) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "UpdatePrevHash", arg0)
+}
+
+// UpdatePrevHash indicates an expected call of UpdatePrevHash
+func (mr *MockMinerMockRecorder) UpdatePrevHash(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePrevHash", reflect.TypeOf((*MockMiner)(nil).UpdatePrevHash), arg0)
 }

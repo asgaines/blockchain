@@ -65,9 +65,9 @@ func (c *Chain) Store(filesPrefix string) error {
 }
 
 func getStorageFnameProto(filesPrefix string) string {
-	return fmt.Sprintf("%s.proto", filesPrefix)
+	return fmt.Sprintf("/storage/%s.proto", filesPrefix)
 }
 
 func getStorageFnameJSON(filesPrefix string) string {
-	return fmt.Sprintf("%s.json", filesPrefix)
+	return fmt.Sprintf("/storage/%s.json", filesPrefix)
 }

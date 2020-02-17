@@ -55,12 +55,12 @@ func NewNode(miners []mining.Miner, pubkey string, poolID int, minPeers int, max
 
 	n.appendAddrs(n.getSeedAddrs())
 
-	f, err := os.OpenFile(filesPrefix+"_blocks.tsv", os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile("/storage/"+filesPrefix+"_blocks.tsv", os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	f2, err := os.OpenFile(filesPrefix+"_periods.tsv", os.O_WRONLY|os.O_CREATE, 0644)
+	f2, err := os.OpenFile("/storage/"+filesPrefix+"_periods.tsv", os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func (n *node) Run(ctx context.Context) {
 	prevHash := n.hasher.Hash(n.chain.LastLink())
 	for _, miner := range n.miners {
 		miner.SetTarget(n.difficulty)
-		miner.SetPrevBlockHash(prevHash)
+		miner.UpdatePrevHash(prevHash)
 	}
 
 	var wg sync.WaitGroup

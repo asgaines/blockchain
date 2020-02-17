@@ -25,7 +25,7 @@ var MaxTarget = new(big.Int).SetBytes([]byte{
 //go:generate mockgen -destination=./mocks/miner_mock.go -package=mocks github.com/asgaines/blockchain/mining Miner
 type Miner interface {
 	Mine(ctx context.Context, mineshaft chan<- BlockReport)
-	SetPrevBlockHash(hash []byte)
+	UpdatePrevHash(hash []byte)
 	SetTarget(difficulty float64) error
 	SetTxs(txs []*pb.Tx)
 }
@@ -101,14 +101,14 @@ func (m *miner) Mine(ctx context.Context, conveyor chan<- BlockReport) {
 				ID:    m.ID,
 				Block: candidate,
 			}
-			m.SetPrevBlockHash(hash[:])
+			m.UpdatePrevHash(hash[:])
 		} else {
 			m.nonce++
 		}
 	}
 }
 
-func (m *miner) SetPrevBlockHash(hash []byte) {
+func (m *miner) UpdatePrevHash(hash []byte) {
 	m.prevHash = hash
 	m.nonce = 0
 }

@@ -16,7 +16,7 @@ Two options: pull or build
 
 ## Run Node
 
-`docker run -p 20403:20403 --rm -v ${PWD}/blockchain:/go/src/github.com/asgaines/blockchain -e BLOCKCHAIN_KEY=<your-key> asgaines/blockchain:latest -returnAddr=<your-ip-or-host>:20403 -seedAddrs=<comma-separated-peer-addrs>`
+`docker run -p 20403:20403 --rm -v ${PWD}/blockchain_storage:/storage -e BLOCKCHAIN_KEY=<your-key> asgaines/blockchain:latest -returnAddr=<your-ip-or-host>:20403 -seedAddrs=<comma-separated-peer-addrs>`
 
 Required:\
 `BLOCKCHAIN_KEY` env variable. It is your "private" key (more similar to a password), used for generating your wallet address and for verifying transactions.\

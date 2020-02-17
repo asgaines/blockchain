@@ -117,7 +117,7 @@ func (n *node) updatePrevBlock(block *chain.Block) {
 	hash := n.hasher.Hash(block)
 
 	for _, miner := range n.miners {
-		miner.SetPrevBlockHash(hash)
+		miner.UpdatePrevHash(hash)
 	}
 }
 
