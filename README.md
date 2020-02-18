@@ -31,7 +31,7 @@ Options:
   -maxpeers int
     	The maximum number of peers to seed out to (default 50)
   -miners int
-    	The number of concurrent miners to run, one per thread (default 1)
+    	The number of concurrent miners to run, one per goroutine (default 1)
   -minpeers int
     	The minimum number of peers to aim for; any fewer will trigger a peer discovery event (default 25)
   -poolid int
