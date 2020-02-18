@@ -28,8 +28,6 @@ Options:
 ```
   -bindAddr string
     	Local address to bind/listen on (default ":20403")
-  -filesprefix string
-    	Common prefix for all output files (default "run")
   -maxpeers int
     	The maximum number of peers to seed out to (default 50)
   -miners int
@@ -38,16 +36,10 @@ Options:
     	The minimum number of peers to aim for; any fewer will trigger a peer discovery event (default 25)
   -poolid int
     	The ID for a node within a single miner's pool (nodes with same pubkey).
-  -recalc int
-    	How many blocks to solve before recalculating difficulty target (default 10)
   -returnAddr string
     	External address (host:port) for peers to return connections
   -seeds string
       Seeding of potential peers for peer discovery. An optional comma-separated list of host/ips with port.
-  -speed string
-    	Speed of hashing, CPU usage. One of low/medium/high/ultra (default "medium")
-  -targetdur duration
-    	The desired amount of time between block mining events; controls the difficulty of the mining (default 10s)
 ```
 
 ## Node Client
