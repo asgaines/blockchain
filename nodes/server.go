@@ -2,6 +2,8 @@ package nodes
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -56,6 +58,23 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 		return nil, errors.New("missing tx from request")
 	}
 
+	for _, tx := range n.txpool {
+		// Primitive way of determining if tx already in pool
+		if tx.GetTimestamp().GetSeconds() == r.GetTx().GetTimestamp().GetSeconds() &&
+			tx.GetTimestamp().GetNanos() == r.GetTx().GetTimestamp().GetNanos() {
+			return nil, errors.New("tx already in pool")
+		}
+	}
+
+	if r.Tx.GetSender() == "" {
+		if r.Tx.GetSenderKey() == "" {
+			return nil, errors.New("`key` must not be empty")
+		}
+
+		sb := sha256.Sum256([]byte(r.Tx.GetSenderKey()))
+		r.Tx.Sender = hex.EncodeToString(sb[:])
+	}
+
 	if r.Tx.GetTimestamp() == nil {
 		r.Tx.Timestamp = ptypes.TimestampNow()
 	}
@@ -86,7 +105,7 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 
 	n.addTx(r.Tx)
 
-	log.Printf("New tx: %v from %s to %s", r.Tx.GetValue(), r.Tx.GetSender(), r.Tx.GetRecipient())
+	log.Printf("New tx: %v from pubkey %s to pubkey %s (message: %s)", r.Tx.GetValue(), r.Tx.GetSender(), r.Tx.GetRecipient(), r.Tx.GetMessage())
 
 	var except NodeID
 	if nodeID := r.GetNodeID(); nodeID != nil {
@@ -96,13 +115,19 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 
 	return &pb.ShareTxResponse{
 		Accepted: true,
-		Info:     fmt.Sprintf("Pubkey will own %v after tx committed in next block", n.getCreditFor(r.Tx.GetSender())),
+		Info:     fmt.Sprintf("Sender will have %v left after tx committed in next block", n.getCreditFor(r.Tx.GetSender())),
 	}, nil
 }
 
 func (n *node) GetCredit(ctx context.Context, r *pb.GetCreditRequest) (*pb.GetCreditResponse, error) {
+	if r.GetKey() == "" {
+		return nil, errors.New("missing `key` from request")
+	}
+	kb := sha256.Sum256([]byte(r.GetKey()))
+	pubkey := hex.EncodeToString(kb[:])
+
 	return &pb.GetCreditResponse{
-		Value: n.getCreditFor(r.GetPubkey()),
+		Value: n.getCreditFor(pubkey),
 	}, nil
 }
 

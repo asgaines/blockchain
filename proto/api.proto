@@ -44,7 +44,10 @@ message Tx {
     // message is an optional field to describe or provide metadata for the transaction
     string message = 5;
     // hash is the sha256 hash of the pertinent fields of the transaction
-	bytes hash = 6;
+    bytes hash = 6;
+    // senderKey is the value hashed to the sender's pubkey
+    // It is a stand-in for full public-private key authentication and is not secure
+    string senderKey = 7;
 }
 
 service Node {
@@ -102,7 +105,7 @@ message ShareTxResponse {
 
 message GetCreditRequest {
     NodeID nodeID = 1;
-    string pubkey = 2;
+    string key = 2;
 }
 
 message GetCreditResponse {

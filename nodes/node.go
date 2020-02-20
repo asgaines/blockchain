@@ -193,7 +193,7 @@ func (n node) propagateTx(tx *pb.Tx, except NodeID) {
 	for nodeID, p := range n.peers {
 		if nodeID != except {
 			if err := p.ShareTx(tx, n.getID()); err != nil {
-				log.Println(err)
+				// log.Println(err)
 			}
 		}
 	}
