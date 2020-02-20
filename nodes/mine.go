@@ -131,8 +131,6 @@ func (n *node) resetTxpool() {
 
 	transactions.SetHash(rewardTx)
 
-	// TODO: ensure ALL txs in txs are in new chain
-	// If not, keep orphans in txs
 	n.txpool = []*pb.Tx{rewardTx}
 
 	for _, miner := range n.miners {

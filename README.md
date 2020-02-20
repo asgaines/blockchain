@@ -4,52 +4,22 @@ Proof-of-concept of the inner workings of a blockchain implementation.
 
 ## Installation
 
-Two options: pull or build
-
-### Pull
-
 `docker pull asgaines/blockchain:latest`
-
-### Build
-
-`docker build -t asgaines/blockchain:latest`
 
 ## Run Node
 
-`docker run -p 20403:20403 --rm -v ${PWD}/blockchain_storage:/storage -e BLOCKCHAIN_KEY=<your-key> asgaines/blockchain:latest -returnAddr=<your-ip-or-host>:20403 -seeds=<comma-separated-peer-addrs>`
+`docker run -p 20403:20403 --rm -v ${PWD}/blockchain_storage:/storage -e BLOCKCHAIN_KEY=<your-key> asgaines/blockchain:latest -returnAddr=<your-ip>:20403 -seeds=<peer-ip:port>`
 
-Required:\
-`BLOCKCHAIN_KEY` env variable. It is your "private" key (more similar to a password), used for generating your wallet address and for verifying transactions.\
-`-returnAddr` is the address (with port) at which your node is accessible to the rest of the network.
+`BLOCKCHAIN_KEY` is your "private" key, used for generating your wallet address and for verifying transactions. It can be whatever you'd like, so long as it's unique in the network.
 
-
-Options:
-
-```
-  -bindAddr string
-    	Local address to bind/listen on (default ":20403")
-  -maxpeers int
-    	The maximum number of peers to seed out to (default 50)
-  -miners int
-    	The number of concurrent miners to run, one per goroutine (default 1)
-  -minpeers int
-    	The minimum number of peers to aim for; any fewer will trigger a peer discovery event (default 25)
-  -poolid int
-    	The ID for a node within a single miner's pool (nodes with same pubkey).
-  -returnAddr string
-    	External address (host:port) for peers to return connections
-  -seeds string
-      Seeding of potential peers for peer discovery. An optional comma-separated list of host/ips with port.
-```
+Remove the volume mounting (`-v ${PWD}/blockchain_storage:/storage`) if you don't care to analyze the ledger after mining.
 
 ## Node Client
 
-Interact with the node directly. Uses gRPC Cobra client interface.
-
 ### Submit Transaction
 
-`docker run -i --rm --entrypoint="" asgaines/blockchain:latest go run client/main.go node sharetx -s <node-ip>:20403 <<< '{"tx": {"value": <amount-to-transfer>, "sender": "<your-pubkey>", "recipient": "<recipient-pubkey>", "message": "<optional-metadata>"}}'`
+`docker run -i --rm --entrypoint="" asgaines/blockchain:latest go run client/main.go node sharetx -s <node-ip:port> <<< '{"tx": {"value": <amount-to-transfer>, "senderKey": "<your-key>", "recipient": "<recipient-pubkey>", "message": "<optional>"}}'`
 
 ### Check Credit
 
-`docker run -i --rm --entrypoint="" asgaines/blockchain:latest go run client/main.go node getcredit -s <node-ip>:20403 <<< '{"pubkey": "<desired-pubkey>"}'`
+`docker run -i --rm --entrypoint="" asgaines/blockchain:latest go run client/main.go node getcredit -s <node-ip:port> <<< '{"key": "<your-key>"}'`

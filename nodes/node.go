@@ -127,7 +127,6 @@ func (n *node) Run(ctx context.Context) {
 	n.difficulty = diff
 	n.chain = c
 
-	// TODO: init txs from peer state fetch
 	n.resetTxpool()
 
 	log.Println("Initializing mining...")

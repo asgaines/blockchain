@@ -73,6 +73,8 @@ func (n *node) ShareTx(ctx context.Context, r *pb.ShareTxRequest) (*pb.ShareTxRe
 
 		sb := sha256.Sum256([]byte(r.Tx.GetSenderKey()))
 		r.Tx.Sender = hex.EncodeToString(sb[:])
+
+		r.Tx.SenderKey = ""
 	}
 
 	if r.Tx.GetTimestamp() == nil {
