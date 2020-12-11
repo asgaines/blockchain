@@ -1,6 +1,6 @@
 # Blockchain
 
-Proof-of-concept of the inner workings of a blockchain implementation.
+Learning/exploration project proof-of-concept of the inner workings of a blockchain implementation.
 
 ## Installation
 
