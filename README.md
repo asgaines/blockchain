@@ -1,6 +1,6 @@
 # Blockchain
 
-Learning/exploration project proof-of-concept of the inner workings of a blockchain implementation.
+Proof-of-concept of the inner workings of a novel cryptocurrency. Full implementation from blockchain data structure, to new block mining, to P2P networking layer.
 
 ## Installation
 
