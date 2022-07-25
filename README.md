@@ -2,6 +2,10 @@
 
 Proof-of-concept of the inner workings of a novel cryptocurrency. Full implementation from blockchain data structure, to new block mining, to P2P networking layer.
 
+[![Presentation of Implementation](https://img.youtube.com/vi/tj7CDsPrtdk/0.jpg)](https://www.youtube.com/watch?v=tj7CDsPrtdk)
+
+[Presentation of Implementation](https://www.youtube.com/watch?v=tj7CDsPrtdk)
+
 ## Installation
 
 `docker pull asgaines/blockchain:latest`
